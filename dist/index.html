@@ -10,14 +10,14 @@
 
 </head>
 <body>
-    <input type="edit" id="input1" />
-    <input type="edit" id="input2" />
+    <input type="edit" id="input1" class="cls1" />
+    <input type="edit" id="input2" class="cls1" />
 
     <textarea id="textarea1"></textarea>
 
-    <div contenteditable="true" id="contenteditable1" style="border:1px solid black;width:300px;height:120px;"/>
 
-    <br/><br/><br/><br/><br/><br/><br/>
+    <div contenteditable="true" id="contenteditable1" style="border:1px solid black;width:300px;height:120px;"></div>
+
     <iframe id="myId"></iframe>
     <script type="text/javascript"> document.getElementById('myId').contentWindow.document.designMode = 'on'; </script>
 
@@ -27,23 +27,29 @@
     <a href="#" id="activate">Activate #input1</a>
 
     <input type="checkbox" id="chk1" />
+    <input type="checkbox" id="chk2" />
+    <input type="checkbox" id="chk3" />
+    &nbsp &nbsp;
+    <input type="checkbox" id="chk4" />
 
     <script>
         let chk = document.querySelector('#chk1');
 
-        chk.addEventListener('change', e => {
-           geokb.listen('#input1', {active: e.target.checked});
-        });
+        // chk.addEventListener('change', e => {
+        //    geokb.listen('#input1', {replaceOnType: e.target.checked});
+        // });
 
-
-
-        let geokb = new Geokeyboard('#input1, #input2, #myId', {
+        let geokb = new Geokeyboard('#input1, #input2, #contenteditable1, #myId', {
+            globalHotSwitch(state) {
+                console.log('GLOBAL:'+state);
+            },
+            globalCheckbox: '#chk4'
         }, {
             replaceOnType: true,
             replaceOnPaste: true,
         }).listen('#input1', {
             replaceOnPaste: true,
-            active: true,
+            checkbox: '#chk2',
             onChange(currentState) {
                 if (currentState) {
                     chk.checked = true;
@@ -53,20 +59,24 @@
 
                 console.log('current state', currentState);
             }
-        }).listen('#input2', {replaceOnType: true, active: false, hotSwitch: true, onChange(c) { console.log('2', c); }});
+        }).listen('#input2', {replaceOnType: true, active: false, hotSwitch: true, checkbox: '#chk3',onChange(c)
+            { console.log('state #2:', c); }
+        }).listen('#input1, #input2', {replaceOnType: true});
 
         document.querySelector('#deactivate').addEventListener('click', e => {
-            geokb.listen('#input1', {replaceOnType: false}, (selectors) => console.log('deactivated', selectors));
+            //geokb.listen('#input1', {replaceOnType: false}, (selectors) => console.log('deactivated', selectors));
+            geokb._disable(document.querySelector('#input1'));
         });
 
         document.querySelector('#activate').addEventListener('click', e => {
             console.log('---');
-            geokb.listen('#input1', {replaceOnType: true}, (selectors) => console.log('activated', selectors));
+            //geokb.listen('#input1', {replaceOnType: true}, (selectors) => console.log('activated', selectors));
+            geokb._enable(document.querySelector('#input1'));
         });
 
 
         var input1 = geokb.selectors.find(s => s === document.querySelector('#input1'));
-        chk.checked = input1.opts.active;
+        chk.checked = input1.opts.replaceOnType;
 
         //.listen('#input1', {replaceOnPaste: false}).listen('#input2', {replaceOnPaste:true});
 
