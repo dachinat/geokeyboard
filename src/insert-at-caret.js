@@ -67,7 +67,7 @@ const insertAtCaret = (element, content) => {
             }
 
             element.value = element.value.slice(0, start) + content + element.value.slice(end);
-            start++;
+            //start++;
 
             textInputRange = element.createTextRange();
             textInputRange.collapse(true);

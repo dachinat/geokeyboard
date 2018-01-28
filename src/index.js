@@ -3,159 +3,91 @@
 const insertAtCaret = require("./insert-at-caret");
 
 class Geokeyboard {
-    constructor(selectors, params={}) {
-        selectors.split(', ').forEach(selector => this.constructor._badSelector(selector));
+    constructor(selectors, params={}, opts={}) {
+        this.selectors = [];
 
         this.params = Object.assign({
-            replaceOnType: true,
-            replaceOnPaste: true,
-            hotSwitch: true,
-            changeCallback: null,
-            activated: true,
+            hotSwitchKey: 96
         }, params);
 
-        this.selectors = Array.from(document.querySelectorAll(selectors));
-        this.selectors.forEach(selector => this.listen(selector));
-
-        this._manageState();
+        this.listen(selectors, opts);
     }
 
-    listen(target=null) {
-        if (!target) {
-            this.selectors.forEach(selector => this.listen(selector));
-            return this;
-        }
+    listen(selectors, opts={}, callback=null) {
+        this.constructor._warnBadSelector(selectors);
 
-        if (typeof target === 'string' || target instanceof String) {
-            target.split(', ').forEach(selector => this.constructor._badSelector(selector));
+        selectors = Array.from(document.querySelectorAll(selectors));
 
-            let selectors = Array.from(document.querySelectorAll(target));
-            this.selectors = Array.from(new Set(this.selectors.concat(selectors)));
-            selectors.forEach(selector => this.listen(selector));
+        selectors.forEach(selector => {
+            selector = (selector.tagName.toLowerCase() === 'iframe') ?
+                (selector.contentWindow || selector.contentDocument).window : selector;
 
-            return this;
-        }
-
-
-        if (this.selectors.indexOf(target) === -1) {
-            this.selectors.push(target);
-        }
-
-        let targetElement = (target.tagName.toLowerCase() === 'iframe') ?
-           (target.contentWindow || target.contentDocument).window : target;
-
-        if (this.params.replaceOnType) {
-            targetElement.addEventListener('keypress', this.constructor._replaceTyped);
-        }
-        if (this.params.replaceOnPaste) {
-            targetElement.addEventListener('paste', this.constructor._replacePasted);
-        }
-
-        if (this.params.hotSwitch) {
-            const selector = this.selectors.find(s => s === (targetElement.frameElement || targetElement));
-
-            if (!selector.hasHotSwitchListener) {
-                selector.hasHotSwitchListener = true;
-
-                selector.hotSwitchFunc = (e) => {
-                    if (e.keyCode === 96) {
-                        if (!this.selectors_) {
-                            this.selectors_ = this.selectors;
-                        }
-
-                        if (!this.selectors_.includes(e.currentTarget) &&
-                            !this.selectors_.includes(e.currentTarget.frameElement)) {
-                            return;
-                        }
-
-                        if (this.selectors.length > 0) {
-                            this.params.activated = false;
-                            this.selectors_ = this.selectors;
-                            this.unlisten();
-                            this.params.changeCallback.call(this, false);
-                        } else {
-                            this.params.activated = true;
-                            this.selectors = this.selectors_;
-                            this.listen();
-                            this.params.changeCallback.call(this, true);
-                        }
-                        e.preventDefault();
-                    }
+            if (!selector.opts) {`
+                selector.opts = {
+                    replaceOnType: true,
+                    hotSwitch: true,
+                    onChange: null,
+                    listeners: [],
+                    active: true
                 };
+            }
+            selector.opts = Object.assign(selector.opts, opts);
 
-                targetElement.addEventListener('keypress', selector.hotSwitchFunc);
+            this.toggleListener(selector, 'replaceOnType', 'keypress', e => {
+               this.constructor._replaceTyped.call(this, e);
+            });
+
+            this.toggleListener(selector, 'replaceOnPaste', 'paste', e => {
+                this.constructor._replacePasted.call(this, e);
+            });
+
+            this.toggleListener(selector, 'hotSwitch', 'keypress', e => {
+                this.constructor._hotSwitch.call(this, e)
+            });
+        });
+
+        this.selectors = Array.from(new Set(this.selectors.concat(selectors)));
+
+        if (callback) {
+            callback.call(this, selectors);
+        }
+
+        return this;
+    }
+
+    toggleListener(selector, listener, type, fn) {
+        const index = this.hasListener(selector, listener);
+        if (selector.opts[listener]) {
+            if (index === false) {
+                selector.opts.listeners.push({[listener]: fn});
+                selector.addEventListener(type, this.getListener(selector, listener));
+            }
+        } else {
+            if (index !== false) {
+                selector.removeEventListener(type, this.getListener(selector, listener));
+                selector.opts.listeners.splice(index, 1);
             }
         }
-
-        this._manageState();
-        return this;
     }
 
-    unlisten(target=null) {
-        if (!target) {
-            this.selectors.forEach(selector => this.unlisten(selector));
-            return this;
-        }
-
-        if (typeof target === 'string' || target instanceof String) {
-            target.split(', ').forEach(selector => this.constructor._badSelector(selector));
-
-            let selectors = Array.from(document.querySelectorAll(target));
-
-            this.selectors = this.selectors.filter(element => !selectors.includes(element));
-
-            selectors.forEach(selector => this.unlisten(selector));
-
-            return this;
-        }
-
-        this.selectors = this.selectors.filter(selector => selector !== target);
-
-        let targetElement = (target.tagName.toLowerCase() === 'iframe') ?
-            (target.contentWindow || target.contentDocument).window : target;
-
-        targetElement.removeEventListener('keypress', this.constructor._replaceTyped);
-        targetElement.removeEventListener('paste', this.constructor._replacePasted);
-
-        return this;
+    hasListener(selector, listener) {
+        const index = selector.opts.listeners.findIndex(f => f[listener]);
+        return index === -1 ? false : index;
     }
 
-    change(fn) {
-        this.params.changeCallback = fn;
-        return this;
-    }
-
-    inactive() {
-        if (this.params.activated) {
-            this.params.activated = false;
-
-            this.selectors_ = this.selectors;
-            this.unlisten();
-            return this;
-        }
-    }
-
-    active() {
-        if (!this.params.activated) {
-            this.params.activated = true;
-
-            if (this.selectors.length === 0) {
-                this.selectors = this.selectors_;
-            }
-
-            this.listen();
-
-            return this;
-        }
+    getListener(selector, listener) {
+        return selector.opts.listeners.find(f => f[listener])[listener];
     }
 
     static _replaceTyped(e) {
-        if (!new RegExp(Geokeyboard.characterSet.join('|')).test(e.key) || e.key.length > 1) {
+        if (!new RegExp(this.constructor.characterSet.join('|')).test(e.key) || e.key.length > 1
+            //|| !this.o.active) {
+            || !e.currentTarget.opts.active) {
             return;
         }
         e.preventDefault();
 
-        insertAtCaret(e.currentTarget, String.fromCharCode(Geokeyboard.characterSet.indexOf(e.key) + 4304));
+        insertAtCaret(e.currentTarget, String.fromCharCode(this.constructor.characterSet.indexOf(e.key) + 4304));
     }
 
     static _replacePasted(e) {
@@ -164,7 +96,7 @@ class Geokeyboard {
 
         insertAtCaret(e.currentTarget, content.split('')
             .map(c => {
-                let index = Geokeyboard.characterSet.indexOf(c);
+                let index = this.constructor.characterSet.indexOf(c);
                 return index !== -1 ? String.fromCharCode(index + 4304) : c;
             })
             .join(''));
@@ -172,27 +104,39 @@ class Geokeyboard {
         e.preventDefault();
     }
 
-    _manageState() {
-        if (!this.params.activated) {
-            this.params.activated = true;
-            return this.inactive();
-        } else {
-            this.params.activated = false;
-            return this.active();
+    static _hotSwitch(e) {
+        if (e.keyCode === this.params.hotSwitchKey) {
+            this.constructor._toggle.call(this, e.currentTarget);
+            e.preventDefault();
         }
-        return this;
     }
 
-    static _badSelector(selector) {
-        if (!document.querySelector(selector)) {
-            console
-                .warn(`${this.constructor.name}: An element with identifier '${selector}' not found. (Skipping...)`);
-            return true;
+    static _toggle(selector) {
+        //this.params.active = !this.params.active;
+        selector.opts.active = !selector.opts.active;
+
+        if (selector.opts['onChange']) {
+            selector.opts['onChange'].call(this, selector.opts.active);//this.params.active);
         }
+    }
+
+    static _warnBadSelector(selectors) {
+        selectors.split(', ').forEach(selector => {
+            if (!document.querySelector(selector)) {
+                console
+                    .warn(`${this.constructor.name}: An element with identifier '${selector}' not found. (Skipping...)`);
+                return true;
+            }
+        });
     }
 
     static get characterSet() {
         return 'abgdevzTiklmnopJrstufqRySCcZwWxjh'.split('');
+    }
+
+    // Not implemented
+    static get propertyName() {
+        return this.constructor.name;
     }
 }
 

@@ -23,15 +23,61 @@
 
     <script src="bundle.js"></script>
 
+    <a href="#" id="deactivate">Deactivate #input1</a>
+    <a href="#" id="activate">Activate #input1</a>
+
+    <input type="checkbox" id="chk1" />
+
     <script>
-        let geokb = new Geokeyboard('#input1, #myId', {
+        let chk = document.querySelector('#chk1');
+
+        chk.addEventListener('change', e => {
+           geokb.listen('#input1', {active: e.target.checked});
+        });
+
+
+
+        let geokb = new Geokeyboard('#input1, #input2, #myId', {
+        }, {
+            replaceOnType: true,
             replaceOnPaste: true,
-            hotSwitch: true,
-            changeCallback: (g) => {
-                console.log(g);
-            },
-            activated: false
-            });//.listen('#textarea1').inactive();
+        }).listen('#input1', {
+            replaceOnPaste: true,
+            active: true,
+            onChange(currentState) {
+                if (currentState) {
+                    chk.checked = true;
+                } else {
+                    chk.checked = false;
+                }
+
+                console.log('current state', currentState);
+            }
+        }).listen('#input2', {replaceOnType: true, active: false, hotSwitch: true, onChange(c) { console.log('2', c); }});
+
+        document.querySelector('#deactivate').addEventListener('click', e => {
+            geokb.listen('#input1', {replaceOnType: false}, (selectors) => console.log('deactivated', selectors));
+        });
+
+        document.querySelector('#activate').addEventListener('click', e => {
+            console.log('---');
+            geokb.listen('#input1', {replaceOnType: true}, (selectors) => console.log('activated', selectors));
+        });
+
+
+        var input1 = geokb.selectors.find(s => s === document.querySelector('#input1'));
+        chk.checked = input1.opts.active;
+
+        //.listen('#input1', {replaceOnPaste: false}).listen('#input2', {replaceOnPaste:true});
+
+        // let geokb = new Geokeyboard('#input1, #myId', {
+        //     replaceOnPaste: true,
+        //     hotSwitch: true,
+        //     changeCallback: (g) => {
+        //         console.log(g);
+        //     },
+        //     activated: false
+        //     });//.listen('#textarea1').inactive();
             // .listen('#textarea1, #input1, #input2').unlisten('#input2, #input1').listen('#input1')
             // .listen('#contenteditable1').unlisten('#contenteditable1').unlisten('#myId').listen('#myId')
             // .listen('#contenteditable1').change((geo) => console.log('geo', geo));//.inactive().active().inactive();
