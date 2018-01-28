@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Geokeyboard</title>
+
+
+</head>
+<body>
+    <input type="edit" id="input1" />
+    <input type="edit" id="input2" />
+
+    <textarea id="textarea1"></textarea>
+
+    <div contenteditable="true" id="contenteditable1" style="border:1px solid black;width:300px;height:120px;"/>
+
+    <br/><br/><br/><br/><br/><br/><br/>
+    <iframe id="myId"></iframe>
+    <script type="text/javascript"> document.getElementById('myId').contentWindow.document.designMode = 'on'; </script>
+
+    <script src="bundle.js"></script>
+
+    <script>
+        let geokb = new Geokeyboard('#input1, #myId', {
+            replaceOnPaste: true,
+            hotSwitch: true,
+            changeCallback: (g) => {
+                console.log(g);
+            },
+            activated: false
+            });//.listen('#textarea1').inactive();
+            // .listen('#textarea1, #input1, #input2').unlisten('#input2, #input1').listen('#input1')
+            // .listen('#contenteditable1').unlisten('#contenteditable1').unlisten('#myId').listen('#myId')
+            // .listen('#contenteditable1').change((geo) => console.log('geo', geo));//.inactive().active().inactive();
+
+        //geokb.unlisten('#textarea1');
+        //geokb.unlisten('#input2');
+
+        //geokb.unlisten('#input2');
+
+        //geokb.listen('#input1').listen('#textarea1');
+
+        //geokb.listen('#contenteditable1');
+
+        //geokb.listen('#myId');
+        //geokb.listen('#input4');
+    </script>
+
+</body>
+</html>

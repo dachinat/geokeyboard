@@ -1,0 +1,39 @@
+{
+  "name": "geokeyboard",
+  "version": "1.0.0",
+  "description": "Type using Georgian keyboard layout",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack",
+    "watch": "webpack --watch",
+    "start": "webpack-dev-server --open"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dachinat/geokeyboard.git"
+  },
+  "keywords": [
+    "georgian",
+    "keyboard",
+    "geokb",
+    "geokbd"
+  ],
+  "author": "Dachi Natsvlishvili",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dachinat/geokeyboard/issues"
+  },
+  "homepage": "https://github.com/dachinat/geokeyboard#readme",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.1",
+    "webpack": "^3.10.0",
+    "webpack-dev-server": "^2.11.1"
+  },
+  "dependencies": {
+    "babel-polyfill": "^6.26.0"
+  }
+}
