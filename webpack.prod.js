@@ -6,7 +6,7 @@ const merge = require('webpack-merge');
 const common = require('./webpack.common.js');
 
 const config = {
-    entry: './src/index.js',
+    entry: './src/main.js',
     module: {
         rules: [
             {
@@ -29,7 +29,7 @@ const config = {
 };
 
 const minifyWithPolyfills = Object.assign({}, config, {
-    entry: ['babel-polyfill', './src/index.js'],
+    entry: ['babel-polyfill', './src/main.js'],
     output: {
         filename: 'geokeyboard.min.pf.js',
         path: path.resolve(__dirname, 'dist')
