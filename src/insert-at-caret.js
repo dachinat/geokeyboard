@@ -1,12 +1,11 @@
 const insertAtCaret = (element, content) => {
+    const tagName = (element.tagName || element.frameElement.tagName);
 
-    const tagName = (element.tagName || element.frameElement.tagName).toLowerCase();
-
-    if (tagName === 'div' || tagName === 'iframe') {
+    if (tagName === 'DIV' || tagName === 'IFRAME') {
         let sel, range;
 
         let windowContext = window, documentContext = document;
-        if (tagName === 'iframe') {
+        if (tagName === 'IFRAME') {
             windowContext = element.window;
             documentContext = element.document;
         }
@@ -17,7 +16,7 @@ const insertAtCaret = (element, content) => {
                 range = sel.getRangeAt(0);
                 range.deleteContents();
 
-                let el = documentContext.createElement('div');
+                let el = documentContext.createElement('DIV');
                 el.innerHTML = content;
                 let frag = documentContext.createDocumentFragment(), node, lastNode;
                 while ((node = el.firstChild)) {
@@ -36,11 +35,13 @@ const insertAtCaret = (element, content) => {
         } else if (documentContext.selection && documentContext.selection.type !== 'Control') {
             documentContext.selection.createRange().pasteHTML(content);
         }
-    } else if (tagName === 'input' || tagName === 'textarea') {
+    } else if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
         if (typeof element.selectionStart === 'number' && typeof element.selectionEnd === 'number') {
             const start = element.selectionStart;
             element.value = element.value.slice(0, start) + content + element.value.slice(element.selectionEnd);
             element.selectionStart = element.selectionEnd = start + 1;
+            element.blur();
+            element.focus();
         } else {
             const range = document.selection.createRange();
             let normal = element.value.replace(/\r\n/g, '\n');
