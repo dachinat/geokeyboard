@@ -9,9 +9,14 @@ class Geokeyboard {
             hotSwitchKey: 96,
             globalHotSwitch: null,
             globalCheckbox: null,
+            useLocalStorage: true
         }, params);
 
         this.listen(selectors, opts);
+
+        if (this.params.useLocalStorage) {
+            this._loadLocalStorage();
+        }
     }
 
     listen(selectors, opts={}, callback=null) {
@@ -77,6 +82,10 @@ class Geokeyboard {
 
         this.selectors = Array.from(new Set(this.selectors.concat(selectors)));
 
+        if (this.params.useLocalStorage) {
+            this._loadLocalStorage();
+        }
+
         if (callback) {
             callback.call(this, selectors);
         }
@@ -114,12 +123,13 @@ class Geokeyboard {
         return index === -1 ? false : index;
     }
 
+
     getListener(selector, listener) {
-        try {
-            return selector.opts.listeners.find(f => f[listener])[listener];
-        } catch (e) {
-            console.warn(`There is no such listener as '${listener}' for '${selector.outerHTML}'...`);
+        const l = selector.opts.listeners.find(f => f[listener]);
+        if (!l) {
+            //console.warn(`No such listener as '${listener}' for '${selector.outerHTML}'`);
         }
+        return l ? l[listener] : undefined;
     }
 
     _enable(selector, enableCheckbox=true) {
@@ -141,13 +151,23 @@ class Geokeyboard {
         if (this.params.globalCheckbox) {
             document.querySelector(this.params.globalCheckbox).checked = true;
         }
+
+        if (this.params.useLocalStorage) {
+            console.log('add');
+            this.constructor._addToLocalStorage.call(this, true);
+        }
     }
 
     _disable(selector, disableCheckbox=true) {
         selector = this.constructor.getContext(selector);
         selector.opts.replaceOnType = false;
 
-        this.removeListener(selector, 'replaceOnType', 'keypress', this.getListener(selector, 'replaceOnType'));
+        const listener = this.getListener(selector, 'replaceOnType');
+        if (!listener) {
+            return;
+        }
+
+        this.removeListener(selector, 'replaceOnType', 'keypress', listener);
 
         if (selector.opts['onChange']) {
             selector.opts['onChange'].call(this, false);
@@ -160,6 +180,24 @@ class Geokeyboard {
         if (this.params.globalCheckbox) {//?
             document.querySelector(this.params.globalCheckbox).checked = false;
         }
+
+        if (this.params.useLocalStorage) {
+            this.constructor._addToLocalStorage.call(this, false);
+        }
+    }
+
+    _loadLocalStorage() {
+        const state = JSON.parse(localStorage.getItem(this.constructor.localStorageKey));
+
+        console.log(state);
+
+        if (state === null) {
+            return;
+        }
+
+        this.selectors.forEach(s => {
+            return state ? this._enable(s) : this._disable(s);
+        });
     }
 
     static _replaceTyped(e) {
@@ -168,7 +206,6 @@ class Geokeyboard {
             //|| !e.currentTarget.opts.active) {
             return;
         }
-        console.log('return');
         e.preventDefault();
 
         insertAtCaret(e.currentTarget, String.fromCharCode(this.constructor.characterSet.indexOf(e.key) + 4304));
@@ -246,6 +283,11 @@ class Geokeyboard {
         }
     }
 
+    static _addToLocalStorage(state) {
+        console.log('##'+state);
+        localStorage.setItem(this.constructor.localStorageKey, state);
+    }
+
     static _warnBadSelector(selectors) {
         selectors.split(', ').forEach(selector => {
             if (!document.querySelector(selector)) {
@@ -263,6 +305,10 @@ class Geokeyboard {
     static getContext(selector) {
         return (selector.tagName.toLowerCase() === 'iframe') ?
             (selector.contentWindow || selector.contentDocument).window : selector;
+    }
+
+    static get localStorageKey() {
+        return 'geokeyboard';
     }
 
     // Not implemented

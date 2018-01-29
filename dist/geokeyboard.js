@@ -91,10 +91,15 @@ var Geokeyboard = function () {
         this.params = Object.assign({
             hotSwitchKey: 96,
             globalHotSwitch: null,
-            globalCheckbox: null
+            globalCheckbox: null,
+            useLocalStorage: true
         }, params);
 
         this.listen(selectors, opts);
+
+        if (this.params.useLocalStorage) {
+            this._loadLocalStorage();
+        }
     }
 
     _createClass(Geokeyboard, [{
@@ -167,6 +172,10 @@ var Geokeyboard = function () {
 
             this.selectors = Array.from(new Set(this.selectors.concat(selectors)));
 
+            if (this.params.useLocalStorage) {
+                this._loadLocalStorage();
+            }
+
             if (callback) {
                 callback.call(this, selectors);
             }
@@ -213,13 +222,13 @@ var Geokeyboard = function () {
     }, {
         key: 'getListener',
         value: function getListener(selector, listener) {
-            try {
-                return selector.opts.listeners.find(function (f) {
-                    return f[listener];
-                })[listener];
-            } catch (e) {
-                console.warn('There is no such listener as \'' + listener + '\' for \'' + selector.outerHTML + '\'...');
+            var l = selector.opts.listeners.find(function (f) {
+                return f[listener];
+            });
+            if (!l) {
+                //console.warn(`No such listener as '${listener}' for '${selector.outerHTML}'`);
             }
+            return l ? l[listener] : undefined;
         }
     }, {
         key: '_enable',
@@ -246,6 +255,11 @@ var Geokeyboard = function () {
             if (this.params.globalCheckbox) {
                 document.querySelector(this.params.globalCheckbox).checked = true;
             }
+
+            if (this.params.useLocalStorage) {
+                console.log('add');
+                this.constructor._addToLocalStorage.call(this, true);
+            }
         }
     }, {
         key: '_disable',
@@ -255,7 +269,12 @@ var Geokeyboard = function () {
             selector = this.constructor.getContext(selector);
             selector.opts.replaceOnType = false;
 
-            this.removeListener(selector, 'replaceOnType', 'keypress', this.getListener(selector, 'replaceOnType'));
+            var listener = this.getListener(selector, 'replaceOnType');
+            if (!listener) {
+                return;
+            }
+
+            this.removeListener(selector, 'replaceOnType', 'keypress', listener);
 
             if (selector.opts['onChange']) {
                 selector.opts['onChange'].call(this, false);
@@ -269,6 +288,27 @@ var Geokeyboard = function () {
                 //?
                 document.querySelector(this.params.globalCheckbox).checked = false;
             }
+
+            if (this.params.useLocalStorage) {
+                this.constructor._addToLocalStorage.call(this, false);
+            }
+        }
+    }, {
+        key: '_loadLocalStorage',
+        value: function _loadLocalStorage() {
+            var _this3 = this;
+
+            var state = JSON.parse(localStorage.getItem(this.constructor.localStorageKey));
+
+            console.log(state);
+
+            if (state === null) {
+                return;
+            }
+
+            this.selectors.forEach(function (s) {
+                return state ? _this3._enable(s) : _this3._disable(s);
+            });
         }
     }], [{
         key: '_replaceTyped',
@@ -278,7 +318,6 @@ var Geokeyboard = function () {
                 //|| !e.currentTarget.opts.active) {
                 return;
             }
-            console.log('return');
             e.preventDefault();
 
             insertAtCaret(e.currentTarget, String.fromCharCode(this.constructor.characterSet.indexOf(e.key) + 4304));
@@ -286,12 +325,12 @@ var Geokeyboard = function () {
     }, {
         key: '_replacePasted',
         value: function _replacePasted(e) {
-            var _this3 = this;
+            var _this4 = this;
 
             var content = e.clipboardData ? e.clipboardData.getData('text/plain') : window.clipboardData ? window.clipboardData.getData('Text') : null;
 
             insertAtCaret(e.currentTarget, content.split('').map(function (c) {
-                var index = _this3.constructor.characterSet.indexOf(c);
+                var index = _this4.constructor.characterSet.indexOf(c);
                 return index !== -1 ? String.fromCharCode(index + 4304) : c;
             }).join(''));
 
@@ -313,15 +352,15 @@ var Geokeyboard = function () {
     }, {
         key: '_watchCheckbox',
         value: function _watchCheckbox(e) {
-            var _this4 = this;
+            var _this5 = this;
 
             var selectors = document.querySelector(this.params.globalCheckbox) === e.currentTarget ? this.selectors : this.selectors.filter(function (selector) {
-                selector = _this4.constructor.getContext(selector);
+                selector = _this5.constructor.getContext(selector);
                 return document.querySelector(selector.opts.checkbox) === e.currentTarget;
             });
 
             selectors.forEach(function (s) {
-                e.currentTarget.checked ? _this4._enable(s) : _this4._disable(s);
+                e.currentTarget.checked ? _this5._enable(s) : _this5._disable(s);
             });
 
             if (this.lastFocus && selectors.includes(this.lastFocus.frameElement || this.lastFocus)) {
@@ -341,14 +380,14 @@ var Geokeyboard = function () {
     }, {
         key: '_toggle',
         value: function _toggle(selector) {
-            var _this5 = this;
+            var _this6 = this;
 
             var index = this.hasListener(selector, 'replaceOnType');
 
             if (index !== false) {
                 if (typeof this.params.globalHotSwitch === 'function') {
                     this.selectors.forEach(function (s) {
-                        return _this5._disable(s, s === selector);
+                        return _this6._disable(s, s === selector);
                     });
                     this.params.globalHotSwitch.call(this, false);
                 } else {
@@ -357,7 +396,7 @@ var Geokeyboard = function () {
             } else {
                 if (typeof this.params.globalHotSwitch === 'function') {
                     this.selectors.forEach(function (s) {
-                        return _this5._enable(s, s === selector);
+                        return _this6._enable(s, s === selector);
                     });
                     this.params.globalHotSwitch.call(this, true);
                 } else {
@@ -366,13 +405,19 @@ var Geokeyboard = function () {
             }
         }
     }, {
+        key: '_addToLocalStorage',
+        value: function _addToLocalStorage(state) {
+            console.log('##' + state);
+            localStorage.setItem(this.constructor.localStorageKey, state);
+        }
+    }, {
         key: '_warnBadSelector',
         value: function _warnBadSelector(selectors) {
-            var _this6 = this;
+            var _this7 = this;
 
             selectors.split(', ').forEach(function (selector) {
                 if (!document.querySelector(selector)) {
-                    console.warn(_this6.constructor.name + ': An element with identifier \'' + selector + '\' not found. (Skipping...)');
+                    console.warn(_this7.constructor.name + ': An element with identifier \'' + selector + '\' not found. (Skipping...)');
                     return true;
                 }
             });
@@ -382,14 +427,19 @@ var Geokeyboard = function () {
         value: function getContext(selector) {
             return selector.tagName.toLowerCase() === 'iframe' ? (selector.contentWindow || selector.contentDocument).window : selector;
         }
-
-        // Not implemented
-
     }, {
         key: 'characterSet',
         get: function get() {
             return 'abgdevzTiklmnopJrstufqRySCcZwWxjh'.split('');
         }
+    }, {
+        key: 'localStorageKey',
+        get: function get() {
+            return 'geokeyboard';
+        }
+
+        // Not implemented
+
     }, {
         key: 'propertyName',
         get: function get() {
