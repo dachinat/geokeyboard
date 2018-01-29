@@ -70,13 +70,28 @@
 "use strict";
 
 
+var Geokeyboard = __webpack_require__(1);
+var Select = __webpack_require__(2);
+var Checkbox = __webpack_require__(3);
+var LocalStorage = __webpack_require__(4);
+var insertAtCaret = __webpack_require__(5);
+
+Geokeyboard.extensions = { Select: Select, Checkbox: Checkbox, LocalStorage: LocalStorage, insertAtCaret: insertAtCaret };
+
+window.Geokeyboard = Geokeyboard;
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var insertAtCaret = __webpack_require__(1);
 
 var Geokeyboard = function () {
     function Geokeyboard(selectors) {
@@ -86,20 +101,23 @@ var Geokeyboard = function () {
         _classCallCheck(this, Geokeyboard);
 
         this.selectors = [];
+        this.extensions = new Set();
         this.lastFocus = null;
 
         this.params = Object.assign({
             hotSwitchKey: 96,
             globalHotSwitch: null,
-            globalCheckbox: null,
-            useLocalStorage: true
+            forceEnabled: false,
+            globals: []
         }, params);
 
         this.listen(selectors, opts);
 
-        if (this.params.useLocalStorage) {
-            this._loadLocalStorage();
+        if (this.params.forceEnabled) {
+            this._forceEnabled();
         }
+
+        this._loadGlobalExtensions();
     }
 
     _createClass(Geokeyboard, [{
@@ -117,17 +135,16 @@ var Geokeyboard = function () {
             selectors.forEach(function (selector) {
                 selector = _this.constructor.getContext(selector);
 
-                if (!selector.opts) {
-                    selector.opts = {
+                if (!selector[_this.constructor.opts]) {
+                    selector[_this.constructor.opts] = {
                         replaceOnType: true,
                         hotSwitch: true,
                         onChange: null,
-                        checkbox: null,
                         checkFocus: true,
                         listeners: []
                     };
                 }
-                selector.opts = Object.assign(selector.opts, opts);
+                selector[_this.constructor.opts] = Object.assign(selector[_this.constructor.opts], opts);
 
                 _this.toggleListener(selector, 'replaceOnType', 'keypress', function (e) {
                     _this.constructor._replaceTyped.call(_this, e);
@@ -144,41 +161,86 @@ var Geokeyboard = function () {
                 _this.toggleListener(selector, 'checkFocus', 'focus', function (e) {
                     _this.constructor._checkFocus.call(_this, e);
                 }, true);
-
-                if (_this.params.globalCheckbox) {
-                    var globalCheckbox = document.querySelector(_this.params.globalCheckbox);
-
-                    if (!globalCheckbox.opts) {
-                        globalCheckbox.opts = { watchCheckbox: true, listeners: [] };
-                    }
-
-                    _this.toggleListener(globalCheckbox, 'watchCheckbox', 'change', function (e) {
-                        _this.constructor._watchCheckbox.call(_this, e);
-                    });
-                }
-
-                if (selector.opts.checkbox) {
-                    var checkbox = document.querySelector(selector.opts.checkbox);
-
-                    if (!checkbox.opts) {
-                        checkbox.opts = { watchCheckbox: true, listeners: [] };
-                    }
-
-                    _this.toggleListener(checkbox, 'watchCheckbox', 'change', function (e) {
-                        _this.constructor._watchCheckbox.call(_this, e);
-                    });
-                }
             });
 
             this.selectors = Array.from(new Set(this.selectors.concat(selectors)));
 
-            if (this.params.useLocalStorage) {
-                this._loadLocalStorage();
-            }
-
             if (callback) {
                 callback.call(this, selectors);
             }
+
+            this._loadGlobalExtensions();
+
+            return this;
+        }
+    }, {
+        key: 'attach',
+        value: function attach(ext, params) {
+            var _this2 = this;
+
+            var opts = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+            var inst = void 0;
+            var _iteratorNormalCompletion = true;
+            var _didIteratorError = false;
+            var _iteratorError = undefined;
+
+            try {
+                for (var _iterator = this.extensions[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                    var i = _step.value;
+
+                    if (i instanceof ext) {
+                        inst = i;
+                        break;
+                    }
+                }
+            } catch (err) {
+                _didIteratorError = true;
+                _iteratorError = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion && _iterator.return) {
+                        _iterator.return();
+                    }
+                } finally {
+                    if (_didIteratorError) {
+                        throw _iteratorError;
+                    }
+                }
+            }
+
+            if (!inst) {
+                inst = Reflect.construct(ext, [this, params, opts]);
+            } else {
+                inst.redefine(params, opts);
+            }
+            this.extensions.add(inst);
+
+            var l = inst.listeners();
+            if (!l) {
+                return;
+            }
+
+            l.forEach(function (el) {
+                var selector = document.querySelector(el[0]);
+
+                var extOpts = el[1].reduce(function (acc, c) {
+                    return Object.assign(acc, _defineProperty({}, c[0], true));
+                }, { listeners: [] });
+
+                if (!selector[_this2.constructor.opts]) {
+                    selector[_this2.constructor.opts] = extOpts;
+                } else {
+                    selector[_this2.constructor.opts] = Object.assign(extOpts, selector[_this2.constructor.opts]);
+                }
+                selector[_this2.constructor.opts] = Object.assign(selector[_this2.constructor.opts], inst.opts);
+
+                el[1].forEach(function (l) {
+                    _this2.toggleListener(selector, l[0], l[1], l[2]);
+                });
+
+                _this2.selectors = Array.from(new Set(_this2.selectors.concat([selector])));
+            });
 
             return this;
         }
@@ -189,7 +251,7 @@ var Geokeyboard = function () {
 
             var index = this.hasListener(selector, listener);
 
-            if (selector.opts[listener]) {
+            if (selector[this.constructor.opts][listener.split('-')[0]]) {
                 if (index === false) {
                     this.addListener(selector, listener, type, fn, useCapture);
                 }
@@ -202,19 +264,22 @@ var Geokeyboard = function () {
     }, {
         key: 'addListener',
         value: function addListener(selector, listener, type, fn) {
-            selector.opts.listeners.push(_defineProperty({}, listener, fn));
+            var hasListener = this.hasListener(selector, listener);
+            if (hasListener === false) {
+                selector[this.constructor.opts].listeners.push(_defineProperty({}, listener, fn));
+            }
             selector.addEventListener(type, this.getListener(selector, listener));
         }
     }, {
         key: 'removeListener',
         value: function removeListener(selector, listener, type) {
             selector.removeEventListener(type, this.getListener(selector, listener));
-            selector.opts.listeners.splice(this.hasListener(selector, listener), 1);
+            selector[this.constructor.opts].listeners.splice(this.hasListener(selector, listener), 1);
         }
     }, {
         key: 'hasListener',
         value: function hasListener(selector, listener) {
-            var index = selector.opts.listeners.findIndex(function (f) {
+            var index = selector[this.constructor.opts].listeners.findIndex(function (f) {
                 return typeof f[listener] === 'function';
             });
             return index === -1 ? false : index;
@@ -222,7 +287,7 @@ var Geokeyboard = function () {
     }, {
         key: 'getListener',
         value: function getListener(selector, listener) {
-            var l = selector.opts.listeners.find(function (f) {
+            var l = selector[this.constructor.opts].listeners.find(function (f) {
                 return f[listener];
             });
             if (!l) {
@@ -233,41 +298,54 @@ var Geokeyboard = function () {
     }, {
         key: '_enable',
         value: function _enable(selector) {
-            var _this2 = this;
-
-            var enableCheckbox = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
+            var _this3 = this;
 
             selector = this.constructor.getContext(selector);
-            selector.opts.replaceOnType = true;
+            selector[this.constructor.opts].replaceOnType = true;
 
             this.addListener(selector, 'replaceOnType', 'keypress', function (e) {
-                _this2.constructor._replaceTyped.call(_this2, e);
+                _this3.constructor._replaceTyped.call(_this3, e);
             });
 
-            if (selector.opts['onChange']) {
-                selector.opts['onChange'].call(this, true);
+            if (selector[this.constructor.opts]['onChange']) {
+                selector[this.constructor.opts]['onChange'].call(this, true);
             }
 
-            if (selector.opts.checkbox && enableCheckbox) {
-                document.querySelector(selector.opts.checkbox).checked = true;
-            }
+            var _iteratorNormalCompletion2 = true;
+            var _didIteratorError2 = false;
+            var _iteratorError2 = undefined;
 
-            if (this.params.globalCheckbox) {
-                document.querySelector(this.params.globalCheckbox).checked = true;
-            }
+            try {
+                for (var _iterator2 = this.extensions[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                    var ext = _step2.value;
 
-            if (this.params.useLocalStorage) {
-                console.log('add');
-                this.constructor._addToLocalStorage.call(this, true);
+                    if (typeof ext.enabled === 'function') {
+                        ext.enabled.call(ext, selector);
+                    }
+                    if (ext.constructor.geokb) {
+                        ext.constructor.globalEnabled.call(ext);
+                    }
+                }
+            } catch (err) {
+                _didIteratorError2 = true;
+                _iteratorError2 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                        _iterator2.return();
+                    }
+                } finally {
+                    if (_didIteratorError2) {
+                        throw _iteratorError2;
+                    }
+                }
             }
         }
     }, {
         key: '_disable',
         value: function _disable(selector) {
-            var disableCheckbox = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
-
             selector = this.constructor.getContext(selector);
-            selector.opts.replaceOnType = false;
+            selector[this.constructor.opts].replaceOnType = false;
 
             var listener = this.getListener(selector, 'replaceOnType');
             if (!listener) {
@@ -276,61 +354,118 @@ var Geokeyboard = function () {
 
             this.removeListener(selector, 'replaceOnType', 'keypress', listener);
 
-            if (selector.opts['onChange']) {
-                selector.opts['onChange'].call(this, false);
+            if (selector[this.constructor.opts]['onChange']) {
+                selector[this.constructor.opts]['onChange'].call(this, false);
             }
 
-            if (selector.opts.checkbox && disableCheckbox) {
-                document.querySelector(selector.opts.checkbox).checked = false;
-            }
+            var _iteratorNormalCompletion3 = true;
+            var _didIteratorError3 = false;
+            var _iteratorError3 = undefined;
 
-            if (this.params.globalCheckbox) {
-                //?
-                document.querySelector(this.params.globalCheckbox).checked = false;
-            }
+            try {
+                for (var _iterator3 = this.extensions[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+                    var ext = _step3.value;
 
-            if (this.params.useLocalStorage) {
-                this.constructor._addToLocalStorage.call(this, false);
+                    if (typeof ext.disabled === 'function') {
+                        ext.disabled.call(ext, selector);
+                    }
+                    if (ext.constructor.geokb) {
+                        ext.constructor.globalDisabled.call(ext);
+                    }
+                }
+            } catch (err) {
+                _didIteratorError3 = true;
+                _iteratorError3 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion3 && _iterator3.return) {
+                        _iterator3.return();
+                    }
+                } finally {
+                    if (_didIteratorError3) {
+                        throw _iteratorError3;
+                    }
+                }
             }
         }
     }, {
-        key: '_loadLocalStorage',
-        value: function _loadLocalStorage() {
-            var _this3 = this;
-
-            var state = JSON.parse(localStorage.getItem(this.constructor.localStorageKey));
-
-            console.log(state);
-
-            if (state === null) {
-                return;
-            }
+        key: '_forceEnabled',
+        value: function _forceEnabled() {
+            var _this4 = this;
 
             this.selectors.forEach(function (s) {
-                return state ? _this3._enable(s) : _this3._disable(s);
+                return _this4._enable(s);
+            });
+        }
+    }, {
+        key: '_focus',
+        value: function _focus(among) {
+            if (this.lastFocus && among.includes(this.lastFocus.frameElement || this.lastFocus)) {
+                this.lastFocus.focus();
+            } else {
+                this.constructor.getContext(among[0]).focus();
+            }
+        }
+    }, {
+        key: '_loadGlobalExtensions',
+        value: function _loadGlobalExtensions() {
+            var _this5 = this;
+
+            this.params.globals.forEach(function (ext) {
+                var found = false;
+                var _iteratorNormalCompletion4 = true;
+                var _didIteratorError4 = false;
+                var _iteratorError4 = undefined;
+
+                try {
+                    for (var _iterator4 = _this5.extensions[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+                        var instance = _step4.value;
+
+                        if (instance instanceof ext[0]) {
+                            found = true;
+                            break;
+                        }
+                    }
+                } catch (err) {
+                    _didIteratorError4 = true;
+                    _iteratorError4 = err;
+                } finally {
+                    try {
+                        if (!_iteratorNormalCompletion4 && _iterator4.return) {
+                            _iterator4.return();
+                        }
+                    } finally {
+                        if (_didIteratorError4) {
+                            throw _iteratorError4;
+                        }
+                    }
+                }
+
+                if (!found) {
+                    _this5.extensions.add(Reflect.construct(ext[0], [_this5]));
+                }
+                ext[0].build(_this5, ext[1]);
             });
         }
     }], [{
         key: '_replaceTyped',
         value: function _replaceTyped(e) {
             if (!new RegExp(this.constructor.characterSet.join('|')).test(e.key) || e.key.length > 1) {
-                //|| !this.o.active) {
-                //|| !e.currentTarget.opts.active) {
                 return;
             }
             e.preventDefault();
 
-            insertAtCaret(e.currentTarget, String.fromCharCode(this.constructor.characterSet.indexOf(e.key) + 4304));
+            this.constructor.extensions.insertAtCaret(e.currentTarget, String.fromCharCode(this.constructor.characterSet.indexOf(e.key) + 4304));
         }
     }, {
         key: '_replacePasted',
         value: function _replacePasted(e) {
-            var _this4 = this;
+            var _this6 = this;
 
             var content = e.clipboardData ? e.clipboardData.getData('text/plain') : window.clipboardData ? window.clipboardData.getData('Text') : null;
 
-            insertAtCaret(e.currentTarget, content.split('').map(function (c) {
-                var index = _this4.constructor.characterSet.indexOf(c);
+            this.constructor.extensions.insertAtCaret(e.currentTarget, content.split('').map(function (c) {
+                var index = _this6.constructor.characterSet.indexOf(c);
                 return index !== -1 ? String.fromCharCode(index + 4304) : c;
             }).join(''));
 
@@ -339,35 +474,7 @@ var Geokeyboard = function () {
     }, {
         key: '_checkFocus',
         value: function _checkFocus(e) {
-            if (e.currentTarget.opts.checkbox) {
-                document.querySelector(e.currentTarget.opts.checkbox).checked = e.currentTarget.opts.replaceOnType;
-            }
-
-            if (this.params.globalCheckbox) {
-                document.querySelector(this.params.globalCheckbox).checked = e.currentTarget.opts.replaceOnType;
-            }
-
             this.lastFocus = e.currentTarget;
-        }
-    }, {
-        key: '_watchCheckbox',
-        value: function _watchCheckbox(e) {
-            var _this5 = this;
-
-            var selectors = document.querySelector(this.params.globalCheckbox) === e.currentTarget ? this.selectors : this.selectors.filter(function (selector) {
-                selector = _this5.constructor.getContext(selector);
-                return document.querySelector(selector.opts.checkbox) === e.currentTarget;
-            });
-
-            selectors.forEach(function (s) {
-                e.currentTarget.checked ? _this5._enable(s) : _this5._disable(s);
-            });
-
-            if (this.lastFocus && selectors.includes(this.lastFocus.frameElement || this.lastFocus)) {
-                this.lastFocus.focus();
-            } else {
-                this.constructor.getContext(selectors[0]).focus();
-            }
         }
     }, {
         key: '_hotSwitch',
@@ -380,14 +487,14 @@ var Geokeyboard = function () {
     }, {
         key: '_toggle',
         value: function _toggle(selector) {
-            var _this6 = this;
+            var _this7 = this;
 
             var index = this.hasListener(selector, 'replaceOnType');
 
             if (index !== false) {
                 if (typeof this.params.globalHotSwitch === 'function') {
                     this.selectors.forEach(function (s) {
-                        return _this6._disable(s, s === selector);
+                        return _this7._disable(s, s === selector);
                     });
                     this.params.globalHotSwitch.call(this, false);
                 } else {
@@ -396,7 +503,7 @@ var Geokeyboard = function () {
             } else {
                 if (typeof this.params.globalHotSwitch === 'function') {
                     this.selectors.forEach(function (s) {
-                        return _this6._enable(s, s === selector);
+                        return _this7._enable(s, s === selector);
                     });
                     this.params.globalHotSwitch.call(this, true);
                 } else {
@@ -405,19 +512,13 @@ var Geokeyboard = function () {
             }
         }
     }, {
-        key: '_addToLocalStorage',
-        value: function _addToLocalStorage(state) {
-            console.log('##' + state);
-            localStorage.setItem(this.constructor.localStorageKey, state);
-        }
-    }, {
         key: '_warnBadSelector',
         value: function _warnBadSelector(selectors) {
-            var _this7 = this;
+            var _this8 = this;
 
             selectors.split(', ').forEach(function (selector) {
                 if (!document.querySelector(selector)) {
-                    console.warn(_this7.constructor.name + ': An element with identifier \'' + selector + '\' not found. (Skipping...)');
+                    console.warn(_this8.constructor.name + ': An element with identifier \'' + selector + '\' not found. (Skipping...)');
                     return true;
                 }
             });
@@ -425,7 +526,7 @@ var Geokeyboard = function () {
     }, {
         key: 'getContext',
         value: function getContext(selector) {
-            return selector.tagName.toLowerCase() === 'iframe' ? (selector.contentWindow || selector.contentDocument).window : selector;
+            return selector.tagName === 'IFRAME' ? (selector.contentWindow || selector.contentDocument).window : selector;
         }
     }, {
         key: 'characterSet',
@@ -433,43 +534,454 @@ var Geokeyboard = function () {
             return 'abgdevzTiklmnopJrstufqRySCcZwWxjh'.split('');
         }
     }, {
-        key: 'localStorageKey',
+        key: 'opts',
         get: function get() {
-            return 'geokeyboard';
-        }
-
-        // Not implemented
-
-    }, {
-        key: 'propertyName',
-        get: function get() {
-            return this.constructor.name;
+            return 'geokeyboard'; //this.constructor.name;
         }
     }]);
 
     return Geokeyboard;
 }();
 
-window.Geokeyboard = Geokeyboard;
+module.exports = Geokeyboard;
 
 /***/ }),
-/* 1 */
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Select = function () {
+    function Select(parent) {
+        var selectors = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+        var opts = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+        _classCallCheck(this, Select);
+
+        this.parent = parent;
+
+        if (selectors) {
+            this.selectors = selectors.split(', ');
+        }
+
+        this.opts = Object.assign({
+            select: null,
+            focusListenerOnSelect: true,
+            selectListener: true,
+            autoSwitch: true
+        }, opts);
+    }
+
+    _createClass(Select, [{
+        key: 'redefine',
+        value: function redefine(selectors, opts) {
+            this.opts = Object.assign(this.opts, opts);
+            if (this.selectors) {
+                this.selectors = Array.from(new Set(this.selectors.concat(selectors.split(', '))));
+            } else {
+                this.selectors = selectors.split(', ');
+            }
+        }
+    }, {
+        key: 'listeners',
+        value: function listeners() {
+            var _this = this;
+
+            if (this.opts.select === null) {
+                return;
+            }
+
+            var schema = [];
+
+            this.selectors.forEach(function (s, i) {
+                schema.push([s, [['focusListenerOnSelect-' + i, 'focus', function (e) {
+                    return _this.updateSelectValue.call(_this, e);
+                }]]]);
+            });
+
+            schema.push([this.opts.select, [['selectListener', 'change', function (e) {
+                return _this.changeHandler.call(_this, e);
+            }]]]);
+
+            return schema;
+        }
+    }, {
+        key: 'enabled',
+        value: function enabled(selector) {
+            if (!this.selectors) {
+                return;
+            }
+
+            var selectors = Array.from(document.querySelectorAll(this.selectors.join(',')));
+            if (this.opts.autoSwitch && selectors.includes(selector)) {
+                document.querySelector(this.opts.select).value = 'true';
+            }
+        }
+    }, {
+        key: 'disabled',
+        value: function disabled(selector) {
+            if (!this.selectors) {
+                return;
+            }
+
+            var selectors = Array.from(document.querySelectorAll(this.selectors.join(',')));
+            if (this.opts.autoSwitch && selectors.includes(selector)) {
+                document.querySelector(this.opts.select).value = 'false';
+            }
+        }
+    }, {
+        key: 'changeHandler',
+        value: function changeHandler(e) {
+            var _this2 = this;
+
+            this.selectors.forEach(function (s) {
+                var selector = document.querySelector(s);
+                var value = JSON.parse(e.currentTarget.value);
+
+                if (value === true) {
+                    _this2.parent._enable.call(_this2.parent, selector);
+                } else {
+                    _this2.parent._disable.call(_this2.parent, selector);
+                }
+            });
+
+            this.parent._focus(document.querySelector(this.selectors));
+        }
+    }, {
+        key: 'updateSelectValue',
+        value: function updateSelectValue(e) {
+            document.querySelector(this.opts.select).value = e.currentTarget[this.parent.constructor.opts].replaceOnType.toString();
+        }
+
+        // For global usage
+
+    }], [{
+        key: 'build',
+        value: function build(geokb) {
+            var params = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+            Select.geokb = geokb;
+
+            if (!Select.params) {
+                Select.params = {
+                    select: null,
+                    focusListener: true,
+                    autoSwitch: true
+                };
+            }
+            Select.params = Object.assign(Select.params, params);
+
+            var globalSelect = document.querySelector(Select.params.select);
+
+            globalSelect.addEventListener('change', function (e) {
+                geokb.selectors.forEach(function (s) {
+                    return e.currentTarget.value === 'true' ? geokb._enable(s) : geokb._disable(s);
+                });
+                geokb._focus(geokb.selectors);
+            });
+
+            geokb.selectors.forEach(function (s) {
+                s.addEventListener('focus', function (e) {
+                    if (e.currentTarget[geokb.constructor.opts].replaceOnType) {
+                        document.querySelector(Select.params.select).value = 'true';
+                    } else {
+                        document.querySelector(Select.params.select).value = 'false';
+                    }
+                });
+            });
+
+            if (geokb.params.forceEnabled) {
+                Select.globalEnabled(true);
+            }
+        }
+    }, {
+        key: 'globalEnabled',
+        value: function globalEnabled(force) {
+            if (Select.params.autoSwitch || force) {
+                document.querySelector(Select.params.select).value = 'true';
+            }
+        }
+    }, {
+        key: 'globalDisabled',
+        value: function globalDisabled(force) {
+            if (Select.params.autoSwitch || force) {
+                document.querySelector(Select.params.select).value = 'false';
+            }
+        }
+    }]);
+
+    return Select;
+}();
+
+module.exports = Select;
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Checkbox = function () {
+    function Checkbox(parent) {
+        var selectors = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+        var opts = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+        _classCallCheck(this, Checkbox);
+
+        this.parent = parent;
+
+        if (selectors) {
+            this.selectors = selectors.split(', ');
+        }
+
+        this.lastFocus = null;
+        this.opts = Object.assign({
+            checkbox: null,
+            focusListenerOnCheckbox: true,
+            checkboxListener: true,
+            autoSwitch: true
+        }, opts);
+    }
+
+    _createClass(Checkbox, [{
+        key: 'changeHandler',
+        value: function changeHandler(e) {
+            var _this = this;
+
+            this.selectors.forEach(function (s) {
+                var selector = document.querySelector(s);
+
+                if (e.currentTarget.checked === true) {
+                    _this.parent._enable.call(_this.parent, selector);
+                } else {
+                    _this.parent._disable.call(_this.parent, selector);
+                }
+            });
+
+            this.parent._focus(document.querySelector(this.selectors));
+        }
+    }, {
+        key: 'updateCheckbox',
+        value: function updateCheckbox(e) {
+            e.currentTarget.checked = e.currentTarget[this.parent.constructor.opts].replaceOnType;
+        }
+
+        // For local usage
+
+    }, {
+        key: 'redefine',
+        value: function redefine(selectors, opts) {
+            this.opts = Object.assign(this.opts, opts);
+            if (this.selectors) {
+                this.selectors = Array.from(new Set(this.selectors.concat(selectors.split(', '))));
+            } else {
+                this.selectors = selectors.split(', ');
+            }
+        }
+    }, {
+        key: 'listeners',
+        value: function listeners() {
+            var _this2 = this;
+
+            if (this.opts.checkbox === null) {
+                return;
+            }
+
+            var schema = [];
+
+            this.selectors.forEach(function (s, i) {
+                schema.push([s, [['focusListenerOnCheckbox-' + i, 'focus', function (e) {
+                    return _this2.updateCheckbox.call(_this2, e);
+                }]]]);
+            });
+
+            schema.push([this.opts.checkbox, [['checkboxListener', 'change', function (e) {
+                return _this2.changeHandler.call(_this2, e);
+            }]]]);
+
+            return schema;
+        }
+    }, {
+        key: 'enabled',
+        value: function enabled(selector) {
+            if (!this.selectors) {
+                return;
+            }
+
+            var selectors = Array.from(document.querySelectorAll(this.selectors.join(',')));
+            if (this.opts.autoSwitch && selectors.includes(selector)) {
+                document.querySelector(this.opts.checkbox).checked = true;
+            }
+        }
+    }, {
+        key: 'disabled',
+        value: function disabled(selector) {
+            if (!this.selectors) {
+                return;
+            }
+
+            var selectors = Array.from(document.querySelectorAll(this.selectors.join(',')));
+            if (this.opts.autoSwitch && selectors.includes(selector)) {
+                document.querySelector(this.opts.checkbox).checked = false;
+            }
+        }
+
+        // For global usage
+
+    }], [{
+        key: 'build',
+        value: function build(geokb) {
+            var params = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+            Checkbox.geokb = geokb;
+
+            if (!Checkbox.params) {
+                Checkbox.params = {
+                    checkbox: null,
+                    focusListener: true,
+                    autoSwitch: true
+                };
+            }
+            Checkbox.params = Object.assign(Checkbox.params, params);
+
+            var globalCheckbox = document.querySelector(Checkbox.params.checkbox);
+
+            globalCheckbox.addEventListener('change', function (e) {
+                geokb.selectors.forEach(function (s) {
+                    return e.currentTarget.checked ? geokb._enable(s) : geokb._disable(s);
+                });
+                geokb._focus(geokb.selectors);
+            });
+
+            geokb.selectors.forEach(function (s) {
+                s.addEventListener('focus', function (e) {
+                    e.currentTarget.checked = e.target.replaceOnType;
+                });
+            });
+
+            if (geokb.params.forceEnabled) {
+                Checkbox.globalEnabled(true);
+            }
+        }
+    }, {
+        key: 'globalEnabled',
+        value: function globalEnabled(force) {
+            if (Checkbox.params.autoSwitch || force) {
+                document.querySelector(Checkbox.params.checkbox).checked = true;
+            }
+        }
+    }, {
+        key: 'globalDisabled',
+        value: function globalDisabled(force) {
+            if (Checkbox.params.autoSwitch || force) {
+                document.querySelector(Checkbox.params.checkbox).checked = false;
+            }
+        }
+    }]);
+
+    return Checkbox;
+}();
+
+module.exports = Checkbox;
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var LocalStorage = function () {
+    function LocalStorage(parent) {
+        _classCallCheck(this, LocalStorage);
+
+        this.parent = parent;
+    }
+    // For global usage
+
+
+    _createClass(LocalStorage, null, [{
+        key: 'build',
+        value: function build(geokb) {
+            var params = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+            LocalStorage.geokb = geokb;
+
+            LocalStorage.params = Object.assign({
+                key: 'geokeyboard'
+            }, params);
+
+            LocalStorage._load.call(LocalStorage);
+        }
+    }, {
+        key: 'globalEnabled',
+        value: function globalEnabled() {
+            console.log('enabled');
+            localStorage.setItem(this.constructor.params.key, true);
+        }
+    }, {
+        key: 'globalDisabled',
+        value: function globalDisabled() {
+            console.log('disabled!!!!');
+            localStorage.setItem(this.constructor.params.key, false);
+        }
+    }, {
+        key: '_load',
+        value: function _load() {
+            var _this = this;
+
+            if (this.geokb.params.forceEnabled) {
+                return;
+            }
+
+            var state = JSON.parse(localStorage.getItem(this.params.key));
+
+            if (state === null) {
+                return;
+            }
+
+            this.geokb.selectors.forEach(function (s) {
+                return state ? _this.geokb._enable(s) : _this.geokb._disable(s);
+            });
+        }
+    }]);
+
+    return LocalStorage;
+}();
+
+module.exports = LocalStorage;
+
+/***/ }),
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var insertAtCaret = function insertAtCaret(element, content) {
+    var tagName = element.tagName || element.frameElement.tagName;
 
-    var tagName = (element.tagName || element.frameElement.tagName).toLowerCase();
-
-    if (tagName === 'div' || tagName === 'iframe') {
+    if (tagName === 'DIV' || tagName === 'IFRAME') {
         var sel = void 0,
             range = void 0;
 
         var windowContext = window,
             documentContext = document;
-        if (tagName === 'iframe') {
+        if (tagName === 'IFRAME') {
             windowContext = element.window;
             documentContext = element.document;
         }
@@ -480,7 +992,7 @@ var insertAtCaret = function insertAtCaret(element, content) {
                 range = sel.getRangeAt(0);
                 range.deleteContents();
 
-                var el = documentContext.createElement('div');
+                var el = documentContext.createElement('DIV');
                 el.innerHTML = content;
                 var frag = documentContext.createDocumentFragment(),
                     node = void 0,
@@ -501,11 +1013,13 @@ var insertAtCaret = function insertAtCaret(element, content) {
         } else if (documentContext.selection && documentContext.selection.type !== 'Control') {
             documentContext.selection.createRange().pasteHTML(content);
         }
-    } else if (tagName === 'input' || tagName === 'textarea') {
+    } else if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
         if (typeof element.selectionStart === 'number' && typeof element.selectionEnd === 'number') {
             var start = element.selectionStart;
             element.value = element.value.slice(0, start) + content + element.value.slice(element.selectionEnd);
             element.selectionStart = element.selectionEnd = start + 1;
+            element.blur();
+            element.focus();
         } else {
             var _range = document.selection.createRange();
             var normal = element.value.replace(/\r\n/g, '\n');
