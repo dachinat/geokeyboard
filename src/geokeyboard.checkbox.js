@@ -11,7 +11,7 @@ class Checkbox {
 
         this.opts = Object.assign({
             checkbox: null,
-            focusListenerOnCheckbox: true,
+            focusListenerForCheckbox: true,
             checkboxListener: true,
             autoSwitch: true,
         }, opts);
@@ -29,7 +29,7 @@ class Checkbox {
         }
     }
 
-    changeHandler(e) {
+    checkboxChanged(e) {
         this.selectors.forEach(s => {
             if (e.currentTarget.checked === true) {
                 this.parent._enable.call(this.parent, s);
@@ -46,16 +46,6 @@ class Checkbox {
         this.checkbox.checked = e.currentTarget[this.parent.constructor.opts].replaceOnType;
     }
 
-    // // For local usage
-    // redefine(selectors, opts) {
-    //     this.opts = Object.assign(this.opts, opts);
-    //     if (this.selectors) {
-    //         this.selectors = Array.from(new Set(this.selectors.concat(selectors.split(', '))));
-    //     } else {
-    //         this.selectors = selectors.split(', ');
-    //     }
-    // }
-
     listeners() {
         if (this.checkbox === null) {
             return;
@@ -65,12 +55,12 @@ class Checkbox {
 
         this.selectors.forEach((s,i) => {
             schema.push([s, [
-                ['focusListenerOnCheckbox-'+i, 'focus', e => this.updateCheckbox.call(this, e)]
+                ['focusListenerForCheckbox-'+i, 'focus', e => this.updateCheckbox.call(this, e)]
             ]]);
         });
 
         schema.push([this.checkbox, [
-            ['checkboxListener', 'change', e => this.changeHandler.call(this, e)]
+            ['checkboxListener', 'change', e => this.checkboxChanged.call(this, e)]
         ]]);
 
         return schema;
@@ -97,53 +87,6 @@ class Checkbox {
             this.checkbox.checked = false;
         }
     }
-
-    // For global usage
-    // build(parent, params={}) {
-    //     this.parent = parent;
-    //
-    //     this.params = Object.assign({
-    //         checkbox: null,
-    //         focusListener: true,
-    //         autoSwitch: true
-    //     }, params);
-    //
-    //     this.globalCheckbox = document.querySelector(this.params.checkbox);
-    //
-    //     this.globalCheckbox.addEventListener('change', (e) => {
-    //         this.parent.selectors.forEach(s => e.currentTarget.checked ?
-    //             this.parent._enable(s) : this.parent._disable(s));
-    //
-    //         this.parent._focus(this.parent.selectors);
-    //     });
-    //
-    //     this.parent.selectors.forEach(s => {
-    //         s.addEventListener('focus', (e) => {
-    //             this.globalCheckbox.checked = e.currentTarget[this.parent.constructor.opts]
-    //                 .replaceOnType;
-    //         });
-    //     });
-    //
-    //     if (this.parent.params.forceEnabled) {
-    //         this.globalEnabled(true);
-    //     }
-    // }
-    //
-    // globalEnabled(force) {
-    //     console.log('en');
-    //     if (this.params.autoSwitch || force) {
-    //         this.globalCheckbox.checked = true;
-    //     }
-    //     this.parent.selectors.forEach(s => this.parent._enable.call(this.parent, s, true));
-    // }
-    //
-    // globalDisabled(force) {
-    //     console.log('dis');
-    //     if (this.params.autoSwitch || force) {
-    //         this.globalCheckbox.checked = false;
-    //     }
-    //     this.parent.selectors.forEach(s => this.parent._disable.call(this.parent, s, true));
-    // }
 }
 
 module.exports = Checkbox;

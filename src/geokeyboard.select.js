@@ -2,29 +2,52 @@ class Select {
     constructor(parent, selectors=null, opts={}) {
         this.parent = parent;
 
+        // Assuming state is global if no selectors
         if (selectors) {
-            this.selectors = selectors.split(', ');
+            this.selectors = Array.from(document.querySelectorAll(selectors));
+        } else {
+            this.selectors = this.parent.selectors;
         }
 
         this.opts = Object.assign({
             select: null,
-            focusListenerOnSelect: true,
+            focusListenerForSelect: true,
             selectListener: true,
             autoSwitch: true,
         }, opts);
-    }
 
-    redefine(selectors, opts) {
-        this.opts = Object.assign(this.opts, opts);
-        if (this.selectors) {
-            this.selectors = Array.from(new Set(this.selectors.concat(selectors.split(', '))));
+        this.select = document.querySelector(this.opts.select) || null;
+
+        if (this.parent.params.forceEnabled) {
+            this.selectors.forEach(s => this.enabled(s));
         } else {
-            this.selectors = selectors.split(', ');
+            this.select.value = this.selectors[0][this.parent.constructor.opts].replaceOnType.toString();
+        }
+
+        if (!selectors) {
+            this.parent._attachListeners(this);
         }
     }
 
+    selectChanged(e) {
+        this.selectors.forEach(s => {
+            const currentValue = e.currentTarget.value;
+            if (currentValue === 'true') {
+                this.parent._enable.call(this.parent, s);
+            } else if (currentValue === 'false') {
+                this.parent._disable.call(this.parent, s);
+            }
+        });
+
+        this.parent._focus(this.selectors);
+    }
+
+    updateSelect(e) {
+        this.select.value = e.currentTarget[this.parent.constructor.opts].replaceOnType;
+    }
+
     listeners() {
-        if (this.opts.select === null) {
+        if (this.select === null) {
             return;
         }
 
@@ -32,12 +55,12 @@ class Select {
 
         this.selectors.forEach((s,i) => {
             schema.push([s, [
-                ['focusListenerOnSelect-'+i, 'focus', e => this.updateSelectValue.call(this, e)]
+                ['focusListenerForSelect-'+i, 'focus', e => this.updateSelect.call(this, e)]
             ]]);
         });
 
-        schema.push([this.opts.select, [
-            ['selectListener', 'change', e => this.changeHandler.call(this, e)]
+        schema.push([this.select, [
+            ['selectListener', 'change', e => this.selectChanged.call(this, e)]
         ]]);
 
         return schema;
@@ -48,9 +71,9 @@ class Select {
             return;
         }
 
-        const selectors = Array.from(document.querySelectorAll(this.selectors.join(',')));
-        if (this.opts.autoSwitch && selectors.includes(selector)) {
-            document.querySelector(this.opts.select).value = 'true';
+        if (this.opts.autoSwitch && this.selectors.includes(selector)) {
+            this.selectors.forEach(s => this.parent._enable.call(this.parent, s, true));
+            this.select.value = 'true';
         }
     }
 
@@ -59,79 +82,9 @@ class Select {
             return;
         }
 
-        const selectors = Array.from(document.querySelectorAll(this.selectors.join(',')));
-        if (this.opts.autoSwitch && selectors.includes(selector)) {
-            document.querySelector(this.opts.select).value = 'false';
-        }
-    }
-
-    changeHandler(e) {
-        this.selectors.forEach(s => {
-            const selector = document.querySelector(s);
-
-            const value = e.currentTarget.value !== 'true';
-
-            if (value === 'true') {
-                this.parent._enable.call(this.parent, selector);
-            } else if (value === 'false') {
-                this.parent._disable.call(this.parent, selector);
-            } else {
-                return;
-            }
-        });
-
-        this.parent._focus(Array.from(document.querySelectorAll(this.selectors.join(','))));
-    }
-
-    updateSelectValue(e) {
-        document.querySelector(this.opts.select).value = e.currentTarget[this.parent.constructor.opts].replaceOnType
-            .toString();
-    }
-
-    // For global usage
-    static build(geokb, params={}) {
-        Select.geokb = geokb;
-
-        if (!Select.params) {
-            Select.params = {
-                select: null,
-                focusListener: true,
-                autoSwitch: true
-            }
-        }
-        Select.params = Object.assign(Select.params, params);
-
-        const globalSelect = document.querySelector(Select.params.select);
-
-        globalSelect.addEventListener('change', (e) => {
-            geokb.selectors.forEach(s => e.currentTarget.value === 'true' ? geokb._enable(s) : geokb._disable(s));
-            geokb._focus(geokb.selectors);
-        });
-
-        geokb.selectors.forEach(s => {
-           s.addEventListener('focus', (e) => {
-               if (e.currentTarget[geokb.constructor.opts].replaceOnType) {
-                   document.querySelector(Select.params.select).value = 'true';
-               } else {
-                   document.querySelector(Select.params.select).value = 'false';
-               }
-           });
-        });
-
-        if (geokb.params.forceEnabled) {
-            Select.globalEnabled(true);
-        }
-    }
-
-    static globalEnabled(force) {
-        if (Select.params.autoSwitch || force) {
-            document.querySelector(Select.params.select).value = 'true';
-        }
-    }
-
-    static globalDisabled(force) {
-        if (Select.params.autoSwitch || force) {
-            document.querySelector(Select.params.select).value = 'false';
+        if (this.opts.autoSwitch && this.selectors.includes(selector)) {
+            this.selectors.forEach(s => this.parent._disable.call(this.parent, s, true));
+            this.select.value = 'false';
         }
     }
 }

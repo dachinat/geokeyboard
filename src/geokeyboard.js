@@ -77,18 +77,7 @@ class Geokeyboard {
     }
 
     attach(ext, selectors, opts={}) {
-        // let instance;
-        // for (let i of this.extensions) {
-        //     if (i instanceof ext) {
-        //         instance = i;
-        //         break;
-        //     }
-        // }
-        //if (!instance) {
         const instance = Reflect.construct(ext, [this, selectors, opts]);
-        //} else {
-        //    instance.redefine(selectors, opts);
-        //}
         this.extensions.add(instance);
         this._attachListeners(instance);
 
@@ -283,19 +272,8 @@ class Geokeyboard {
 
     _loadGlobalExtensions() {
         this.params.globals.forEach(ext => {
-            // let found = false;
-            // for (let instance of this.extensions) {
-            //     if (instance instanceof ext[0]) {
-            //         found = true;
-            //         break;
-            //     }
-            // }
-            // if (!found) {
-            //     this.extensions.add(Reflect.construct(ext[0], [this]));
-            // }
             let instance = Reflect.construct(ext[0], [this, null, ext[1]]);
             this.extensions.add(instance);
-            //instance.build(this, ext[1]);
         });
     }
 
@@ -319,7 +297,7 @@ class Geokeyboard {
     }
 
     static get opts() {
-        return 'geokeyboard';//this.constructor.name;
+        return 'geokeyboard';
     }
 }
 

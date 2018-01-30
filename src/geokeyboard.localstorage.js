@@ -1,36 +1,32 @@
 class LocalStorage {
-    constructor(parent) {
+    constructor(parent, selectors=null, params={}) {
         this.parent = parent;
-    }
-    // For global usage
-    static build(geokb, params={}) {
-        LocalStorage.geokb = geokb;
 
-        LocalStorage.params = Object.assign({
-            key: 'geokeyboard',
+        this.params = Object.assign({
+            key: 'geokeyboard_global'
         }, params);
 
-        LocalStorage._load.call(LocalStorage);
+        this.load();
     }
 
-    static globalEnabled() {
-        if (this.constructor.geokb.params.forceEnabled) {
+    enabled() {
+        if (this.parent.params.forceEnabled) {
             return;
         }
 
-        localStorage.setItem(this.constructor.params.key, true);
+        localStorage.setItem(this.params.key, true);
     }
 
-    static globalDisabled() {
-        if (this.constructor.geokb.params.forceEnabled) {
+    disabled() {
+        if (this.parent.params.forceEnabled) {
             return;
         }
 
-        localStorage.setItem(this.constructor.params.key, false);
+        localStorage.setItem(this.params.key, false);
     }
 
-    static _load() {
-        if (this.geokb.params.forceEnabled) {
+    load() {
+        if (this.parent.params.forceEnabled) {
             return;
         }
 
@@ -40,9 +36,7 @@ class LocalStorage {
             return;
         }
 
-        this.geokb.selectors.forEach(s => {
-            return state ? this.geokb._enable(s) : this.geokb._disable(s);
-        });
+        this.parent.selectors.forEach(s => state ? this.parent._enable(s) : this.parent._disable(s));
     }
 }
 
