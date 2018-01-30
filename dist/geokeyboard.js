@@ -121,6 +121,14 @@ var Geokeyboard = function () {
     }
 
     _createClass(Geokeyboard, [{
+        key: Symbol.call,
+        value: function value(selectors) {
+            var params = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+            var opts = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+            return new this.constructor(selectors, params, opts);
+        }
+    }, {
         key: 'listen',
         value: function listen(selectors) {
             var _this = this;
@@ -180,7 +188,7 @@ var Geokeyboard = function () {
 
             var opts = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
-            var inst = void 0;
+            var instance = void 0;
             var _iteratorNormalCompletion = true;
             var _didIteratorError = false;
             var _iteratorError = undefined;
@@ -190,7 +198,7 @@ var Geokeyboard = function () {
                     var i = _step.value;
 
                     if (i instanceof ext) {
-                        inst = i;
+                        instance = i;
                         break;
                     }
                 }
@@ -209,22 +217,22 @@ var Geokeyboard = function () {
                 }
             }
 
-            if (!inst) {
-                inst = Reflect.construct(ext, [this, params, opts]);
+            if (!instance) {
+                instance = Reflect.construct(ext, [this, params, opts]);
             } else {
-                inst.redefine(params, opts);
+                instance.redefine(params, opts);
             }
-            this.extensions.add(inst);
+            this.extensions.add(instance);
 
-            var l = inst.listeners();
-            if (!l) {
+            var listeners = instance.listeners();
+            if (!listeners) {
                 return;
             }
 
-            l.forEach(function (el) {
-                var selector = document.querySelector(el[0]);
+            listeners.forEach(function (element) {
+                var selector = document.querySelector(element[0]);
 
-                var extOpts = el[1].reduce(function (acc, c) {
+                var extOpts = element[1].reduce(function (acc, c) {
                     return Object.assign(acc, _defineProperty({}, c[0], true));
                 }, { listeners: [] });
 
@@ -233,10 +241,10 @@ var Geokeyboard = function () {
                 } else {
                     selector[_this2.constructor.opts] = Object.assign(extOpts, selector[_this2.constructor.opts]);
                 }
-                selector[_this2.constructor.opts] = Object.assign(selector[_this2.constructor.opts], inst.opts);
+                selector[_this2.constructor.opts] = Object.assign(selector[_this2.constructor.opts], instance.opts);
 
-                el[1].forEach(function (l) {
-                    _this2.toggleListener(selector, l[0], l[1], l[2]);
+                element[1].forEach(function (details) {
+                    _this2.toggleListener(selector, details[0], details[1], details[2]);
                 });
 
                 _this2.selectors = Array.from(new Set(_this2.selectors.concat([selector])));
@@ -290,9 +298,6 @@ var Geokeyboard = function () {
             var l = selector[this.constructor.opts].listeners.find(function (f) {
                 return f[listener];
             });
-            if (!l) {
-                //console.warn(`No such listener as '${listener}' for '${selector.outerHTML}'`);
-            }
             return l ? l[listener] : undefined;
         }
     }, {
@@ -641,16 +646,19 @@ var Select = function () {
 
             this.selectors.forEach(function (s) {
                 var selector = document.querySelector(s);
-                var value = JSON.parse(e.currentTarget.value);
 
-                if (value === true) {
+                var value = e.currentTarget.value !== 'true';
+
+                if (value === 'true') {
                     _this2.parent._enable.call(_this2.parent, selector);
-                } else {
+                } else if (value === 'false') {
                     _this2.parent._disable.call(_this2.parent, selector);
+                } else {
+                    return;
                 }
             });
 
-            this.parent._focus(document.querySelector(this.selectors));
+            this.parent._focus(Array.from(document.querySelectorAll(this.selectors.join(','))));
         }
     }, {
         key: 'updateSelectValue',
@@ -768,7 +776,7 @@ var Checkbox = function () {
                 }
             });
 
-            this.parent._focus(document.querySelector(this.selectors));
+            this.parent._focus(Array.from(document.querySelectorAll(this.selectors)));
         }
     }, {
         key: 'updateCheckbox',
@@ -930,13 +938,19 @@ var LocalStorage = function () {
     }, {
         key: 'globalEnabled',
         value: function globalEnabled() {
-            console.log('enabled');
+            if (this.constructor.geokb.params.forceEnabled) {
+                return;
+            }
+
             localStorage.setItem(this.constructor.params.key, true);
         }
     }, {
         key: 'globalDisabled',
         value: function globalDisabled() {
-            console.log('disabled!!!!');
+            if (this.constructor.geokb.params.forceEnabled) {
+                return;
+            }
+
             localStorage.setItem(this.constructor.params.key, false);
         }
     }, {

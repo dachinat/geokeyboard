@@ -68,17 +68,19 @@ class Select {
     changeHandler(e) {
         this.selectors.forEach(s => {
             const selector = document.querySelector(s);
-            const value = JSON.parse(e.currentTarget.value);
 
-            if (value === true) {
+            const value = e.currentTarget.value !== 'true';
+
+            if (value === 'true') {
                 this.parent._enable.call(this.parent, selector);
-            } else {
+            } else if (value === 'false') {
                 this.parent._disable.call(this.parent, selector);
+            } else {
+                return;
             }
         });
 
-
-        this.parent._focus(document.querySelector(this.selectors));
+        this.parent._focus(Array.from(document.querySelectorAll(this.selectors.join(','))));
     }
 
     updateSelectValue(e) {

@@ -4,14 +4,14 @@ module.exports = {
     entry: ['./src/main.js'],
     module: {
         rules: [
-            {
-                test: /\.js$/,
-                exclude: /node_modules/,
-                loader: 'babel-loader',
-                options: {
-                    presets: ['env'],
-                },
-            }
+            // {
+            //     test: /\.js$/,
+            //     exclude: /node_modules/,
+            //     loader: 'babel-loader',
+            //     options: {
+            //         presets: ['env'],
+            //     },
+            // }
         ]
     },
     output: {

@@ -20,7 +20,15 @@ class Geokeyboard {
         this._loadGlobalExtensions();
     }
 
+    [Symbol.call](selectors, params={}, opts={}) {
+        return new this.constructor(selectors, params, opts);
+    }
+
     listen(selectors, opts={}, callback=null) {
+        if (!selectors) {
+            return this;
+        }
+
         this.constructor._warnBadSelector(selectors);
 
         selectors = Array.from(document.querySelectorAll(selectors));
@@ -31,6 +39,7 @@ class Geokeyboard {
             if (!selector[this.constructor.opts]) {
                 selector[this.constructor.opts] = {
                     replaceOnType: true,
+                    replaceOnPaste: false,
                     hotSwitch: true,
                     onChange: null,
                     checkFocus: true,
@@ -67,46 +76,48 @@ class Geokeyboard {
         return this;
     }
 
-    attach(ext, params, opts={}) {
-        let inst;
-        for (let i of this.extensions) {
-            if (i instanceof ext) {
-                inst = i;
-                break;
-            }
-        }
-        if (!inst) {
-            inst = Reflect.construct(ext, [this, params, opts]);
-        } else {
-            inst.redefine(params, opts);
-        }
-        this.extensions.add(inst);
+    attach(ext, selectors, opts={}) {
+        // let instance;
+        // for (let i of this.extensions) {
+        //     if (i instanceof ext) {
+        //         instance = i;
+        //         break;
+        //     }
+        // }
+        //if (!instance) {
+        const instance = Reflect.construct(ext, [this, selectors, opts]);
+        //} else {
+        //    instance.redefine(selectors, opts);
+        //}
+        this.extensions.add(instance);
+        this._attachListeners(instance);
 
-        const l = inst.listeners();
-        if (!l) {
+        return this;
+    }
+
+    _attachListeners(instance) {
+        const listeners = instance.listeners();
+        if (!listeners) {
             return;
         }
 
-        l.forEach(el => {
-            let selector = document.querySelector(el[0]);
-
-            let extOpts = el[1].reduce((acc, c) => Object.assign(acc, {[c[0]]: true}), {listeners: []});
+        listeners.forEach(element => {
+            let selector = element[0];
+            let extOpts = element[1].reduce((acc, c) => Object.assign(acc, {[c[0]]: true}), {listeners: []});
 
             if (!selector[this.constructor.opts]) {
                 selector[this.constructor.opts] = extOpts;
             } else {
                 selector[this.constructor.opts] = Object.assign(extOpts, selector[this.constructor.opts]);
             }
-            selector[this.constructor.opts] = Object.assign(selector[this.constructor.opts], inst.opts);
+            selector[this.constructor.opts] = Object.assign(selector[this.constructor.opts], instance.opts);
 
-            el[1].forEach(l => {
-                this.toggleListener(selector, l[0], l[1], l[2]);
+            element[1].forEach(details => {
+                this.toggleListener(selector, details[0], details[1], details[2]);
             });
 
             this.selectors = Array.from(new Set(this.selectors.concat([selector])));
         });
-
-        return this;
     }
 
     toggleListener(selector, listener, type, fn, useCapture=false) {
@@ -144,15 +155,16 @@ class Geokeyboard {
 
     getListener(selector, listener) {
         const l = selector[this.constructor.opts].listeners.find(f => f[listener]);
-        if (!l) {
-            //console.warn(`No such listener as '${listener}' for '${selector.outerHTML}'`);
-        }
         return l ? l[listener] : undefined;
     }
 
-    _enable(selector) {
+    _enable(selector, skip_ext=false) {
         selector = this.constructor.getContext(selector);
         selector[this.constructor.opts].replaceOnType = true;
+
+        if (selector.hasAttribute('type') && selector.getAttribute('type') !== 'text') {
+            return;
+        }
 
         this.addListener(selector, 'replaceOnType', 'keypress', e => {
             this.constructor._replaceTyped.call(this, e);
@@ -162,17 +174,19 @@ class Geokeyboard {
             selector[this.constructor.opts]['onChange'].call(this, true);
         }
 
-        for (let ext of this.extensions) {
-            if (typeof ext.enabled === 'function') {
-                ext.enabled.call(ext, selector);
-            }
-            if (ext.constructor.geokb) {
-                ext.constructor.globalEnabled.call(ext);
+        if (!skip_ext) {
+            for (let ext of this.extensions) {
+                if (typeof ext.enabled === 'function') {
+                    ext.enabled.call(ext, selector);
+                }
+                if (ext.constructor.geokb) {
+                    ext.constructor.globalEnabled.call(ext);
+                }
             }
         }
     }
 
-    _disable(selector) {
+    _disable(selector, skip_ext=false) {
         selector = this.constructor.getContext(selector);
         selector[this.constructor.opts].replaceOnType = false;
 
@@ -187,12 +201,14 @@ class Geokeyboard {
             selector[this.constructor.opts]['onChange'].call(this, false);
         }
 
-        for (let ext of this.extensions) {
-            if (typeof ext.disabled === 'function') {
-                ext.disabled.call(ext, selector);
-            }
-            if (ext.constructor.geokb) {
-                ext.constructor.globalDisabled.call(ext);
+        if (!skip_ext) {
+            for (let ext of this.extensions) {
+                if (typeof ext.disabled === 'function') {
+                    ext.disabled.call(ext, selector);
+                }
+                if (ext.constructor.geokb) {
+                    ext.constructor.globalDisabled.call(ext);
+                }
             }
         }
     }
@@ -267,17 +283,19 @@ class Geokeyboard {
 
     _loadGlobalExtensions() {
         this.params.globals.forEach(ext => {
-            let found = false;
-            for (let instance of this.extensions) {
-                if (instance instanceof ext[0]) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                this.extensions.add(Reflect.construct(ext[0], [this]));
-            }
-            ext[0].build(this, ext[1]);
+            // let found = false;
+            // for (let instance of this.extensions) {
+            //     if (instance instanceof ext[0]) {
+            //         found = true;
+            //         break;
+            //     }
+            // }
+            // if (!found) {
+            //     this.extensions.add(Reflect.construct(ext[0], [this]));
+            // }
+            let instance = Reflect.construct(ext[0], [this, null, ext[1]]);
+            this.extensions.add(instance);
+            //instance.build(this, ext[1]);
         });
     }
 

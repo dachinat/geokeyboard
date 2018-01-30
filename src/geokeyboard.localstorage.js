@@ -14,12 +14,18 @@ class LocalStorage {
     }
 
     static globalEnabled() {
-        console.log('enabled');
+        if (this.constructor.geokb.params.forceEnabled) {
+            return;
+        }
+
         localStorage.setItem(this.constructor.params.key, true);
     }
 
     static globalDisabled() {
-        console.log('disabled!!!!');
+        if (this.constructor.geokb.params.forceEnabled) {
+            return;
+        }
+
         localStorage.setItem(this.constructor.params.key, false);
     }
 
