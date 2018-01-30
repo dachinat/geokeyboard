@@ -70,8 +70,7 @@ class Checkbox {
         if (!this.selectors) {
             return;
         }
-
-        if (this.opts.autoSwitch && this.selectors.includes(selector)) {
+        if (this.opts.autoSwitch && this.selectors.includes(selector.frameElement || selector)) {
             this.selectors.forEach(s => this.parent._enable.call(this.parent, s, true));
             this.checkbox.checked = true;
         }
@@ -82,7 +81,7 @@ class Checkbox {
             return;
         }
 
-        if (this.opts.autoSwitch && this.selectors.includes(selector)) {
+        if (this.opts.autoSwitch && this.selectors.includes(selector.frameElement || selector)) {
             this.selectors.forEach(s => this.parent._disable.call(this.parent, s, true));
             this.checkbox.checked = false;
         }

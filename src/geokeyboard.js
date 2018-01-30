@@ -152,7 +152,7 @@ class Geokeyboard {
         selector = this.constructor.getContext(selector);
         selector[this.constructor.opts].replaceOnType = true;
 
-        if (selector.hasAttribute('type') && selector.getAttribute('type') !== 'text') {
+        if (selector.hasAttribute && selector.hasAttribute('type') && selector.getAttribute('type') !== 'text') {
             return;
         }
 

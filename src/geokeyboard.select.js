@@ -71,7 +71,7 @@ class Select {
             return;
         }
 
-        if (this.opts.autoSwitch && this.selectors.includes(selector)) {
+        if (this.opts.autoSwitch && this.selectors.includes(selector.frameElement || selector)) {
             this.selectors.forEach(s => this.parent._enable.call(this.parent, s, true));
             this.select.value = 'true';
         }
@@ -82,7 +82,7 @@ class Select {
             return;
         }
 
-        if (this.opts.autoSwitch && this.selectors.includes(selector)) {
+        if (this.opts.autoSwitch && this.selectors.includes(selector.frameElement || selector)) {
             this.selectors.forEach(s => this.parent._disable.call(this.parent, s, true));
             this.select.value = 'false';
         }
