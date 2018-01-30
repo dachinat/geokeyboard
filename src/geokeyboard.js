@@ -2,11 +2,12 @@ class Geokeyboard {
     constructor(selectors, params={}, opts={}) {
         this.selectors = [];
         this.extensions = new Set;
+
         this.lastFocus = null;
 
         this.params = Object.assign({
             hotSwitchKey: 96,
-            globalHotSwitch: null,
+            change: null, // (fn) Changes other selectors and executes a callback
             forceEnabled: false,
             globals: []
         }, params);
@@ -41,7 +42,7 @@ class Geokeyboard {
                     replaceOnType: true,
                     replaceOnPaste: false,
                     hotSwitch: true,
-                    onChange: null,
+                    change: null, // on change callback
                     checkFocus: true,
                     listeners: [],
                 };
@@ -155,21 +156,18 @@ class Geokeyboard {
             return;
         }
 
+        if (selector[this.constructor.opts]['change'] && this.hasListener(selector, 'replaceOnType') === false) {
+            selector[this.constructor.opts]['change'].call(this, true);
+        }
+
         this.addListener(selector, 'replaceOnType', 'keypress', e => {
             this.constructor._replaceTyped.call(this, e);
         });
-
-        if (selector[this.constructor.opts]['onChange']) {
-            selector[this.constructor.opts]['onChange'].call(this, true);
-        }
 
         if (!skip_ext) {
             for (let ext of this.extensions) {
                 if (typeof ext.enabled === 'function') {
                     ext.enabled.call(ext, selector);
-                }
-                if (ext.constructor.geokb) {
-                    ext.constructor.globalEnabled.call(ext);
                 }
             }
         }
@@ -184,19 +182,16 @@ class Geokeyboard {
             return;
         }
 
-        this.removeListener(selector, 'replaceOnType', 'keypress', listener);
-
-        if (selector[this.constructor.opts]['onChange']) {
-            selector[this.constructor.opts]['onChange'].call(this, false);
+        if (selector[this.constructor.opts]['change'] && this.hasListener(selector, 'replaceOnType') !== false) {
+            selector[this.constructor.opts]['change'].call(this, false);
         }
+
+        this.removeListener(selector, 'replaceOnType', 'keypress', listener);
 
         if (!skip_ext) {
             for (let ext of this.extensions) {
                 if (typeof ext.disabled === 'function') {
                     ext.disabled.call(ext, selector);
-                }
-                if (ext.constructor.geokb) {
-                    ext.constructor.globalDisabled.call(ext);
                 }
             }
         }
@@ -254,16 +249,16 @@ class Geokeyboard {
         const index = this.hasListener(selector, 'replaceOnType');
 
         if (index !== false) {
-            if (typeof this.params.globalHotSwitch === 'function') {
+            if (typeof this.params.change === 'function') {
                 this.selectors.forEach(s => this._disable(s, s === selector));
-                this.params.globalHotSwitch.call(this, false);
+                this.params.change.call(this, false);
             } else {
                 this._disable(selector);
             }
         } else {
-            if (typeof this.params.globalHotSwitch === 'function') {
+            if (typeof this.params.change === 'function') {
                 this.selectors.forEach(s => this._enable(s, s === selector));
-                this.params.globalHotSwitch.call(this, true);
+                this.params.change.call(this, true);
             } else {
                 this._enable(selector);
             }
