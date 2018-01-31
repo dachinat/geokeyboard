@@ -18,7 +18,7 @@ email: dachinat@gmail.com
 description: JavaScript library for using Georgian keyboard layout in HTML elements.
 show_downloads: true
 theme: jekyll-theme-minimal
-baseurl: "/geokeboard" # the subpath of your site, e.g. /blog
+baseurl: "/geokeyboard" # the subpath of your site, e.g. /blog
 url: "https://dachinat.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: ""
 github_username:  dachinat
