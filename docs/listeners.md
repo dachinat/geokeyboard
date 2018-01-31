@@ -40,5 +40,7 @@ new Geokeyboard('#input1', {}, {
 });
 ```
 
+<a href="https://jsfiddle.net/dachinat/mn8aj36b/" target="_blank">See an example at JSFiddle.</a>
+
 Having a reference to instance variable, you can call `.listen` to add selectors, or change options for existing
 selectors anytime in your code.

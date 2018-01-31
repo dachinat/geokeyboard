@@ -24,7 +24,7 @@ In this example we're including minified version with polyfills (put this code b
 Alternatively, you can include `Geokeyboard` via CDN and download no files from the repo:
 
 ```html
-<script src="https://cdn.rawgit.com/dachinat/geokeyboard/241491ab/dist/geokeyboard.min.pf.js"></script>
+<script src="https://cdn.rawgit.com/dachinat/geokeyboard/{{site.github.build_revision}}/dist/geokeyboard.min.pf.js"></script>
 ```
 
 Right after above examples you will have access to `Geokeyboard` object. Which you'll need to initiate with `new`
@@ -33,5 +33,7 @@ keyword.
 ```js
 geokb = new Geokeyboard;
 ```
+
+See an <a href="https://jsfiddle.net/dachinat/xwafbrvu/" target="_blank">an example on JSFiddle.</a>
 
 Go head to <a href="/initializing.html">Initializing a constructor</a> to continue with this guide.

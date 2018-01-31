@@ -37,6 +37,8 @@ geokb.listen('#input1');
 
 produce same results.
 
+<a href="https://jsfiddle.net/dachinat/cxtpfeb9/" target="_blank">Have a look at examples of initializing.</a>
+
 Default options for an instance are:
 
 ```js
@@ -46,5 +48,7 @@ Default options for an instance are:
     globals: [], // Geokeyboard extensions to attach to every bound element (i.e.: checkbox)
 }
 ```
+
+<a href="https://jsfiddle.net/dachinat/uz98v7y9/" target="_blank">JSFiddle example on passing parameters.</a>
 
 Let's continue documenting with <a href="/listeners.html">Listeners overview.</a>

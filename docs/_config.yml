@@ -26,7 +26,6 @@ github_username:  dachinat
 markdown: kramdown
 github:
   url: "https://github.com/dachinat/geokeyboard"
-
 # Exclude from processing.
 # The following items will not be processed, by default. Create a custom list
 # to override the default setting.
