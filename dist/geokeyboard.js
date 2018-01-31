@@ -102,20 +102,16 @@ var Geokeyboard = function () {
 
         this.selectors = [];
         this.extensions = new Set();
+
         this.lastFocus = null;
 
         this.params = Object.assign({
             hotSwitchKey: 96,
-            globalHotSwitch: null,
-            forceEnabled: false,
+            change: null, // (fn) Changes other selectors and executes a callback
             globals: []
         }, params);
 
         this.listen(selectors, opts);
-
-        if (this.params.forceEnabled) {
-            this._forceEnabled();
-        }
 
         this._loadGlobalExtensions();
     }
@@ -136,6 +132,10 @@ var Geokeyboard = function () {
             var opts = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
             var callback = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
 
+            if (!selectors) {
+                return this;
+            }
+
             this.constructor._warnBadSelector(selectors);
 
             selectors = Array.from(document.querySelectorAll(selectors));
@@ -146,8 +146,9 @@ var Geokeyboard = function () {
                 if (!selector[_this.constructor.opts]) {
                     selector[_this.constructor.opts] = {
                         replaceOnType: true,
+                        replaceOnPaste: false,
                         hotSwitch: true,
-                        onChange: null,
+                        change: null, // on change callback
                         checkFocus: true,
                         listeners: []
                     };
@@ -183,46 +184,19 @@ var Geokeyboard = function () {
         }
     }, {
         key: 'attach',
-        value: function attach(ext, params) {
-            var _this2 = this;
-
+        value: function attach(ext, selectors) {
             var opts = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
-            var instance = void 0;
-            var _iteratorNormalCompletion = true;
-            var _didIteratorError = false;
-            var _iteratorError = undefined;
-
-            try {
-                for (var _iterator = this.extensions[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-                    var i = _step.value;
-
-                    if (i instanceof ext) {
-                        instance = i;
-                        break;
-                    }
-                }
-            } catch (err) {
-                _didIteratorError = true;
-                _iteratorError = err;
-            } finally {
-                try {
-                    if (!_iteratorNormalCompletion && _iterator.return) {
-                        _iterator.return();
-                    }
-                } finally {
-                    if (_didIteratorError) {
-                        throw _iteratorError;
-                    }
-                }
-            }
-
-            if (!instance) {
-                instance = Reflect.construct(ext, [this, params, opts]);
-            } else {
-                instance.redefine(params, opts);
-            }
+            var instance = Reflect.construct(ext, [this, selectors, opts]);
             this.extensions.add(instance);
+            this._attachListeners(instance);
+
+            return this;
+        }
+    }, {
+        key: '_attachListeners',
+        value: function _attachListeners(instance) {
+            var _this2 = this;
 
             var listeners = instance.listeners();
             if (!listeners) {
@@ -230,8 +204,7 @@ var Geokeyboard = function () {
             }
 
             listeners.forEach(function (element) {
-                var selector = document.querySelector(element[0]);
-
+                var selector = element[0];
                 var extOpts = element[1].reduce(function (acc, c) {
                     return Object.assign(acc, _defineProperty({}, c[0], true));
                 }, { listeners: [] });
@@ -249,8 +222,6 @@ var Geokeyboard = function () {
 
                 _this2.selectors = Array.from(new Set(_this2.selectors.concat([selector])));
             });
-
-            return this;
         }
     }, {
         key: 'toggleListener',
@@ -305,43 +276,48 @@ var Geokeyboard = function () {
         value: function _enable(selector) {
             var _this3 = this;
 
+            var skip_ext = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
             selector = this.constructor.getContext(selector);
             selector[this.constructor.opts].replaceOnType = true;
+
+            if (selector.hasAttribute && selector.hasAttribute('type') && selector.getAttribute('type') !== 'text') {
+                return;
+            }
+
+            if (selector[this.constructor.opts]['change'] && this.hasListener(selector, 'replaceOnType') === false) {
+                selector[this.constructor.opts]['change'].call(this, true);
+            }
 
             this.addListener(selector, 'replaceOnType', 'keypress', function (e) {
                 _this3.constructor._replaceTyped.call(_this3, e);
             });
 
-            if (selector[this.constructor.opts]['onChange']) {
-                selector[this.constructor.opts]['onChange'].call(this, true);
-            }
+            if (!skip_ext) {
+                var _iteratorNormalCompletion = true;
+                var _didIteratorError = false;
+                var _iteratorError = undefined;
 
-            var _iteratorNormalCompletion2 = true;
-            var _didIteratorError2 = false;
-            var _iteratorError2 = undefined;
-
-            try {
-                for (var _iterator2 = this.extensions[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                    var ext = _step2.value;
-
-                    if (typeof ext.enabled === 'function') {
-                        ext.enabled.call(ext, selector);
-                    }
-                    if (ext.constructor.geokb) {
-                        ext.constructor.globalEnabled.call(ext);
-                    }
-                }
-            } catch (err) {
-                _didIteratorError2 = true;
-                _iteratorError2 = err;
-            } finally {
                 try {
-                    if (!_iteratorNormalCompletion2 && _iterator2.return) {
-                        _iterator2.return();
+                    for (var _iterator = this.extensions[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                        var ext = _step.value;
+
+                        if (typeof ext.enabled === 'function') {
+                            ext.enabled.call(ext, selector);
+                        }
                     }
+                } catch (err) {
+                    _didIteratorError = true;
+                    _iteratorError = err;
                 } finally {
-                    if (_didIteratorError2) {
-                        throw _iteratorError2;
+                    try {
+                        if (!_iteratorNormalCompletion && _iterator.return) {
+                            _iterator.return();
+                        }
+                    } finally {
+                        if (_didIteratorError) {
+                            throw _iteratorError;
+                        }
                     }
                 }
             }
@@ -349,6 +325,8 @@ var Geokeyboard = function () {
     }, {
         key: '_disable',
         value: function _disable(selector) {
+            var skip_ext = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
             selector = this.constructor.getContext(selector);
             selector[this.constructor.opts].replaceOnType = false;
 
@@ -357,50 +335,40 @@ var Geokeyboard = function () {
                 return;
             }
 
+            if (selector[this.constructor.opts]['change'] && this.hasListener(selector, 'replaceOnType') !== false) {
+                selector[this.constructor.opts]['change'].call(this, false);
+            }
+
             this.removeListener(selector, 'replaceOnType', 'keypress', listener);
 
-            if (selector[this.constructor.opts]['onChange']) {
-                selector[this.constructor.opts]['onChange'].call(this, false);
-            }
+            if (!skip_ext) {
+                var _iteratorNormalCompletion2 = true;
+                var _didIteratorError2 = false;
+                var _iteratorError2 = undefined;
 
-            var _iteratorNormalCompletion3 = true;
-            var _didIteratorError3 = false;
-            var _iteratorError3 = undefined;
-
-            try {
-                for (var _iterator3 = this.extensions[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-                    var ext = _step3.value;
-
-                    if (typeof ext.disabled === 'function') {
-                        ext.disabled.call(ext, selector);
-                    }
-                    if (ext.constructor.geokb) {
-                        ext.constructor.globalDisabled.call(ext);
-                    }
-                }
-            } catch (err) {
-                _didIteratorError3 = true;
-                _iteratorError3 = err;
-            } finally {
                 try {
-                    if (!_iteratorNormalCompletion3 && _iterator3.return) {
-                        _iterator3.return();
+                    for (var _iterator2 = this.extensions[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                        var ext = _step2.value;
+
+                        if (typeof ext.disabled === 'function') {
+                            ext.disabled.call(ext, selector);
+                        }
                     }
+                } catch (err) {
+                    _didIteratorError2 = true;
+                    _iteratorError2 = err;
                 } finally {
-                    if (_didIteratorError3) {
-                        throw _iteratorError3;
+                    try {
+                        if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                            _iterator2.return();
+                        }
+                    } finally {
+                        if (_didIteratorError2) {
+                            throw _iteratorError2;
+                        }
                     }
                 }
             }
-        }
-    }, {
-        key: '_forceEnabled',
-        value: function _forceEnabled() {
-            var _this4 = this;
-
-            this.selectors.forEach(function (s) {
-                return _this4._enable(s);
-            });
         }
     }, {
         key: '_focus',
@@ -414,42 +382,11 @@ var Geokeyboard = function () {
     }, {
         key: '_loadGlobalExtensions',
         value: function _loadGlobalExtensions() {
-            var _this5 = this;
+            var _this4 = this;
 
             this.params.globals.forEach(function (ext) {
-                var found = false;
-                var _iteratorNormalCompletion4 = true;
-                var _didIteratorError4 = false;
-                var _iteratorError4 = undefined;
-
-                try {
-                    for (var _iterator4 = _this5.extensions[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
-                        var instance = _step4.value;
-
-                        if (instance instanceof ext[0]) {
-                            found = true;
-                            break;
-                        }
-                    }
-                } catch (err) {
-                    _didIteratorError4 = true;
-                    _iteratorError4 = err;
-                } finally {
-                    try {
-                        if (!_iteratorNormalCompletion4 && _iterator4.return) {
-                            _iterator4.return();
-                        }
-                    } finally {
-                        if (_didIteratorError4) {
-                            throw _iteratorError4;
-                        }
-                    }
-                }
-
-                if (!found) {
-                    _this5.extensions.add(Reflect.construct(ext[0], [_this5]));
-                }
-                ext[0].build(_this5, ext[1]);
+                var instance = Reflect.construct(ext[0], [_this4, null, ext[1]]);
+                _this4.extensions.add(instance);
             });
         }
     }], [{
@@ -465,12 +402,12 @@ var Geokeyboard = function () {
     }, {
         key: '_replacePasted',
         value: function _replacePasted(e) {
-            var _this6 = this;
+            var _this5 = this;
 
             var content = e.clipboardData ? e.clipboardData.getData('text/plain') : window.clipboardData ? window.clipboardData.getData('Text') : null;
 
             this.constructor.extensions.insertAtCaret(e.currentTarget, content.split('').map(function (c) {
-                var index = _this6.constructor.characterSet.indexOf(c);
+                var index = _this5.constructor.characterSet.indexOf(c);
                 return index !== -1 ? String.fromCharCode(index + 4304) : c;
             }).join(''));
 
@@ -492,25 +429,25 @@ var Geokeyboard = function () {
     }, {
         key: '_toggle',
         value: function _toggle(selector) {
-            var _this7 = this;
+            var _this6 = this;
 
             var index = this.hasListener(selector, 'replaceOnType');
 
             if (index !== false) {
-                if (typeof this.params.globalHotSwitch === 'function') {
+                if (typeof this.params.change === 'function') {
                     this.selectors.forEach(function (s) {
-                        return _this7._disable(s, s === selector);
+                        return _this6._disable(s, s === selector);
                     });
-                    this.params.globalHotSwitch.call(this, false);
+                    this.params.change.call(this, false);
                 } else {
                     this._disable(selector);
                 }
             } else {
-                if (typeof this.params.globalHotSwitch === 'function') {
+                if (typeof this.params.change === 'function') {
                     this.selectors.forEach(function (s) {
-                        return _this7._enable(s, s === selector);
+                        return _this6._enable(s, s === selector);
                     });
-                    this.params.globalHotSwitch.call(this, true);
+                    this.params.change.call(this, true);
                 } else {
                     this._enable(selector);
                 }
@@ -519,11 +456,11 @@ var Geokeyboard = function () {
     }, {
         key: '_warnBadSelector',
         value: function _warnBadSelector(selectors) {
-            var _this8 = this;
+            var _this7 = this;
 
             selectors.split(', ').forEach(function (selector) {
                 if (!document.querySelector(selector)) {
-                    console.warn(_this8.constructor.name + ': An element with identifier \'' + selector + '\' not found. (Skipping...)');
+                    console.warn(_this7.constructor.name + ': An element with identifier \'' + selector + '\' not found. (Skipping...)');
                     return true;
                 }
             });
@@ -541,7 +478,7 @@ var Geokeyboard = function () {
     }, {
         key: 'opts',
         get: function get() {
-            return 'geokeyboard'; //this.constructor.name;
+            return 'geokeyboard';
         }
     }]);
 
@@ -570,47 +507,69 @@ var Select = function () {
 
         this.parent = parent;
 
+        // Assuming state is global if no selectors
         if (selectors) {
-            this.selectors = selectors.split(', ');
+            this.selectors = Array.from(document.querySelectorAll(selectors));
+        } else {
+            this.selectors = this.parent.selectors;
         }
 
         this.opts = Object.assign({
             select: null,
-            focusListenerOnSelect: true,
+            focusListenerForSelect: true,
             selectListener: true,
             autoSwitch: true
         }, opts);
+
+        this.select = document.querySelector(this.opts.select) || null;
+
+        this.select.value = this.selectors[0][this.parent.constructor.opts].replaceOnType.toString();
+
+        if (!selectors) {
+            this.parent._attachListeners(this);
+        }
     }
 
     _createClass(Select, [{
-        key: 'redefine',
-        value: function redefine(selectors, opts) {
-            this.opts = Object.assign(this.opts, opts);
-            if (this.selectors) {
-                this.selectors = Array.from(new Set(this.selectors.concat(selectors.split(', '))));
-            } else {
-                this.selectors = selectors.split(', ');
-            }
+        key: 'selectChanged',
+        value: function selectChanged(e) {
+            var _this = this;
+
+            this.selectors.forEach(function (s) {
+                var currentValue = e.currentTarget.value;
+                if (currentValue === 'true') {
+                    _this.parent._enable.call(_this.parent, s);
+                } else if (currentValue === 'false') {
+                    _this.parent._disable.call(_this.parent, s);
+                }
+            });
+
+            this.parent._focus(this.selectors);
+        }
+    }, {
+        key: 'updateSelect',
+        value: function updateSelect(e) {
+            this.select.value = e.currentTarget[this.parent.constructor.opts].replaceOnType;
         }
     }, {
         key: 'listeners',
         value: function listeners() {
-            var _this = this;
+            var _this2 = this;
 
-            if (this.opts.select === null) {
+            if (this.select === null) {
                 return;
             }
 
             var schema = [];
 
             this.selectors.forEach(function (s, i) {
-                schema.push([s, [['focusListenerOnSelect-' + i, 'focus', function (e) {
-                    return _this.updateSelectValue.call(_this, e);
+                schema.push([s, [['focusListenerForSelect-' + i, 'focus', function (e) {
+                    return _this2.updateSelect.call(_this2, e);
                 }]]]);
             });
 
-            schema.push([this.opts.select, [['selectListener', 'change', function (e) {
-                return _this.changeHandler.call(_this, e);
+            schema.push([this.select, [['selectListener', 'change', function (e) {
+                return _this2.selectChanged.call(_this2, e);
             }]]]);
 
             return schema;
@@ -618,107 +577,33 @@ var Select = function () {
     }, {
         key: 'enabled',
         value: function enabled(selector) {
+            var _this3 = this;
+
             if (!this.selectors) {
                 return;
             }
 
-            var selectors = Array.from(document.querySelectorAll(this.selectors.join(',')));
-            if (this.opts.autoSwitch && selectors.includes(selector)) {
-                document.querySelector(this.opts.select).value = 'true';
+            if (this.opts.autoSwitch && this.selectors.includes(selector.frameElement || selector)) {
+                this.selectors.forEach(function (s) {
+                    return _this3.parent._enable.call(_this3.parent, s, true);
+                });
+                this.select.value = 'true';
             }
         }
     }, {
         key: 'disabled',
         value: function disabled(selector) {
+            var _this4 = this;
+
             if (!this.selectors) {
                 return;
             }
 
-            var selectors = Array.from(document.querySelectorAll(this.selectors.join(',')));
-            if (this.opts.autoSwitch && selectors.includes(selector)) {
-                document.querySelector(this.opts.select).value = 'false';
-            }
-        }
-    }, {
-        key: 'changeHandler',
-        value: function changeHandler(e) {
-            var _this2 = this;
-
-            this.selectors.forEach(function (s) {
-                var selector = document.querySelector(s);
-
-                var value = e.currentTarget.value !== 'true';
-
-                if (value === 'true') {
-                    _this2.parent._enable.call(_this2.parent, selector);
-                } else if (value === 'false') {
-                    _this2.parent._disable.call(_this2.parent, selector);
-                } else {
-                    return;
-                }
-            });
-
-            this.parent._focus(Array.from(document.querySelectorAll(this.selectors.join(','))));
-        }
-    }, {
-        key: 'updateSelectValue',
-        value: function updateSelectValue(e) {
-            document.querySelector(this.opts.select).value = e.currentTarget[this.parent.constructor.opts].replaceOnType.toString();
-        }
-
-        // For global usage
-
-    }], [{
-        key: 'build',
-        value: function build(geokb) {
-            var params = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-
-            Select.geokb = geokb;
-
-            if (!Select.params) {
-                Select.params = {
-                    select: null,
-                    focusListener: true,
-                    autoSwitch: true
-                };
-            }
-            Select.params = Object.assign(Select.params, params);
-
-            var globalSelect = document.querySelector(Select.params.select);
-
-            globalSelect.addEventListener('change', function (e) {
-                geokb.selectors.forEach(function (s) {
-                    return e.currentTarget.value === 'true' ? geokb._enable(s) : geokb._disable(s);
+            if (this.opts.autoSwitch && this.selectors.includes(selector.frameElement || selector)) {
+                this.selectors.forEach(function (s) {
+                    return _this4.parent._disable.call(_this4.parent, s, true);
                 });
-                geokb._focus(geokb.selectors);
-            });
-
-            geokb.selectors.forEach(function (s) {
-                s.addEventListener('focus', function (e) {
-                    if (e.currentTarget[geokb.constructor.opts].replaceOnType) {
-                        document.querySelector(Select.params.select).value = 'true';
-                    } else {
-                        document.querySelector(Select.params.select).value = 'false';
-                    }
-                });
-            });
-
-            if (geokb.params.forceEnabled) {
-                Select.globalEnabled(true);
-            }
-        }
-    }, {
-        key: 'globalEnabled',
-        value: function globalEnabled(force) {
-            if (Select.params.autoSwitch || force) {
-                document.querySelector(Select.params.select).value = 'true';
-            }
-        }
-    }, {
-        key: 'globalDisabled',
-        value: function globalDisabled(force) {
-            if (Select.params.autoSwitch || force) {
-                document.querySelector(Select.params.select).value = 'false';
+                this.select.value = 'false';
             }
         }
     }]);
@@ -748,73 +633,69 @@ var Checkbox = function () {
 
         this.parent = parent;
 
+        // Assuming state is global if no selectors
         if (selectors) {
-            this.selectors = selectors.split(', ');
+            this.selectors = Array.from(document.querySelectorAll(selectors)); //selectors.split(', ');
+        } else {
+            this.selectors = this.parent.selectors;
         }
 
-        this.lastFocus = null;
         this.opts = Object.assign({
             checkbox: null,
-            focusListenerOnCheckbox: true,
+            focusListenerForCheckbox: true,
             checkboxListener: true,
             autoSwitch: true
         }, opts);
+
+        this.checkbox = document.querySelector(this.opts.checkbox) || null;
+
+        this.checkbox.checked = this.selectors[0][this.parent.constructor.opts].replaceOnType;
+
+        if (!selectors) {
+            this.parent._attachListeners(this);
+        }
     }
 
     _createClass(Checkbox, [{
-        key: 'changeHandler',
-        value: function changeHandler(e) {
+        key: 'checkboxChanged',
+        value: function checkboxChanged(e) {
             var _this = this;
 
             this.selectors.forEach(function (s) {
-                var selector = document.querySelector(s);
-
                 if (e.currentTarget.checked === true) {
-                    _this.parent._enable.call(_this.parent, selector);
+                    _this.parent._enable.call(_this.parent, s);
                 } else {
-                    _this.parent._disable.call(_this.parent, selector);
+                    _this.parent._disable.call(_this.parent, s);
                 }
             });
 
-            this.parent._focus(Array.from(document.querySelectorAll(this.selectors)));
+            this.parent._focus(this.selectors);
         }
     }, {
         key: 'updateCheckbox',
         value: function updateCheckbox(e) {
-            e.currentTarget.checked = e.currentTarget[this.parent.constructor.opts].replaceOnType;
-        }
-
-        // For local usage
-
-    }, {
-        key: 'redefine',
-        value: function redefine(selectors, opts) {
-            this.opts = Object.assign(this.opts, opts);
-            if (this.selectors) {
-                this.selectors = Array.from(new Set(this.selectors.concat(selectors.split(', '))));
-            } else {
-                this.selectors = selectors.split(', ');
-            }
+            //this.selectors.forEach(s => this.checkbox.checked = s[this.parent.constructor.opts].replaceOnType);
+            this.checkbox.checked = e.currentTarget[this.parent.constructor.opts].replaceOnType;
         }
     }, {
         key: 'listeners',
         value: function listeners() {
             var _this2 = this;
 
-            if (this.opts.checkbox === null) {
+            if (this.checkbox === null) {
                 return;
             }
 
             var schema = [];
 
             this.selectors.forEach(function (s, i) {
-                schema.push([s, [['focusListenerOnCheckbox-' + i, 'focus', function (e) {
+                schema.push([s, [['focusListenerForCheckbox-' + i, 'focus', function (e) {
                     return _this2.updateCheckbox.call(_this2, e);
                 }]]]);
             });
 
-            schema.push([this.opts.checkbox, [['checkboxListener', 'change', function (e) {
-                return _this2.changeHandler.call(_this2, e);
+            schema.push([this.checkbox, [['checkboxListener', 'change', function (e) {
+                return _this2.checkboxChanged.call(_this2, e);
             }]]]);
 
             return schema;
@@ -822,77 +703,32 @@ var Checkbox = function () {
     }, {
         key: 'enabled',
         value: function enabled(selector) {
+            var _this3 = this;
+
             if (!this.selectors) {
                 return;
             }
-
-            var selectors = Array.from(document.querySelectorAll(this.selectors.join(',')));
-            if (this.opts.autoSwitch && selectors.includes(selector)) {
-                document.querySelector(this.opts.checkbox).checked = true;
+            if (this.opts.autoSwitch && this.selectors.includes(selector.frameElement || selector)) {
+                this.selectors.forEach(function (s) {
+                    return _this3.parent._enable.call(_this3.parent, s, true);
+                });
+                this.checkbox.checked = true;
             }
         }
     }, {
         key: 'disabled',
         value: function disabled(selector) {
+            var _this4 = this;
+
             if (!this.selectors) {
                 return;
             }
 
-            var selectors = Array.from(document.querySelectorAll(this.selectors.join(',')));
-            if (this.opts.autoSwitch && selectors.includes(selector)) {
-                document.querySelector(this.opts.checkbox).checked = false;
-            }
-        }
-
-        // For global usage
-
-    }], [{
-        key: 'build',
-        value: function build(geokb) {
-            var params = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-
-            Checkbox.geokb = geokb;
-
-            if (!Checkbox.params) {
-                Checkbox.params = {
-                    checkbox: null,
-                    focusListener: true,
-                    autoSwitch: true
-                };
-            }
-            Checkbox.params = Object.assign(Checkbox.params, params);
-
-            var globalCheckbox = document.querySelector(Checkbox.params.checkbox);
-
-            globalCheckbox.addEventListener('change', function (e) {
-                geokb.selectors.forEach(function (s) {
-                    return e.currentTarget.checked ? geokb._enable(s) : geokb._disable(s);
+            if (this.opts.autoSwitch && this.selectors.includes(selector.frameElement || selector)) {
+                this.selectors.forEach(function (s) {
+                    return _this4.parent._disable.call(_this4.parent, s, true);
                 });
-                geokb._focus(geokb.selectors);
-            });
-
-            geokb.selectors.forEach(function (s) {
-                s.addEventListener('focus', function (e) {
-                    e.currentTarget.checked = e.target.replaceOnType;
-                });
-            });
-
-            if (geokb.params.forceEnabled) {
-                Checkbox.globalEnabled(true);
-            }
-        }
-    }, {
-        key: 'globalEnabled',
-        value: function globalEnabled(force) {
-            if (Checkbox.params.autoSwitch || force) {
-                document.querySelector(Checkbox.params.checkbox).checked = true;
-            }
-        }
-    }, {
-        key: 'globalDisabled',
-        value: function globalDisabled(force) {
-            if (Checkbox.params.autoSwitch || force) {
-                document.querySelector(Checkbox.params.checkbox).checked = false;
+                this.checkbox.checked = false;
             }
         }
     }]);
@@ -915,52 +751,34 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var LocalStorage = function () {
     function LocalStorage(parent) {
+        var selectors = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+        var params = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
         _classCallCheck(this, LocalStorage);
 
         this.parent = parent;
+
+        this.params = Object.assign({
+            key: 'geokeyboard_global'
+        }, params);
+
+        this.load();
     }
-    // For global usage
 
-
-    _createClass(LocalStorage, null, [{
-        key: 'build',
-        value: function build(geokb) {
-            var params = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-
-            LocalStorage.geokb = geokb;
-
-            LocalStorage.params = Object.assign({
-                key: 'geokeyboard'
-            }, params);
-
-            LocalStorage._load.call(LocalStorage);
+    _createClass(LocalStorage, [{
+        key: 'enabled',
+        value: function enabled() {
+            localStorage.setItem(this.params.key, true);
         }
     }, {
-        key: 'globalEnabled',
-        value: function globalEnabled() {
-            if (this.constructor.geokb.params.forceEnabled) {
-                return;
-            }
-
-            localStorage.setItem(this.constructor.params.key, true);
+        key: 'disabled',
+        value: function disabled() {
+            localStorage.setItem(this.params.key, false);
         }
     }, {
-        key: 'globalDisabled',
-        value: function globalDisabled() {
-            if (this.constructor.geokb.params.forceEnabled) {
-                return;
-            }
-
-            localStorage.setItem(this.constructor.params.key, false);
-        }
-    }, {
-        key: '_load',
-        value: function _load() {
+        key: 'load',
+        value: function load() {
             var _this = this;
-
-            if (this.geokb.params.forceEnabled) {
-                return;
-            }
 
             var state = JSON.parse(localStorage.getItem(this.params.key));
 
@@ -968,8 +786,8 @@ var LocalStorage = function () {
                 return;
             }
 
-            this.geokb.selectors.forEach(function (s) {
-                return state ? _this.geokb._enable(s) : _this.geokb._disable(s);
+            this.parent.selectors.forEach(function (s) {
+                return state ? _this.parent._enable(s) : _this.parent._disable(s);
             });
         }
     }]);

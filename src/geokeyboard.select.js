@@ -18,11 +18,7 @@ class Select {
 
         this.select = document.querySelector(this.opts.select) || null;
 
-        if (this.parent.params.forceEnabled) {
-            this.selectors.forEach(s => this.enabled(s));
-        } else {
-            this.select.value = this.selectors[0][this.parent.constructor.opts].replaceOnType.toString();
-        }
+        this.select.value = this.selectors[0][this.parent.constructor.opts].replaceOnType.toString();
 
         if (!selectors) {
             this.parent._attachListeners(this);

@@ -18,11 +18,7 @@ class Checkbox {
 
         this.checkbox = document.querySelector(this.opts.checkbox) || null;
 
-        if (this.parent.params.forceEnabled) {
-            this.selectors.forEach(s => this.enabled(s));
-        } else {
-            this.checkbox.checked = this.selectors[0][this.parent.constructor.opts].replaceOnType;
-        }
+        this.checkbox.checked = this.selectors[0][this.parent.constructor.opts].replaceOnType;
 
         if (!selectors) {
             this.parent._attachListeners(this);

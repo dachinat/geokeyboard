@@ -10,26 +10,14 @@ class LocalStorage {
     }
 
     enabled() {
-        if (this.parent.params.forceEnabled) {
-            return;
-        }
-
         localStorage.setItem(this.params.key, true);
     }
 
     disabled() {
-        if (this.parent.params.forceEnabled) {
-            return;
-        }
-
         localStorage.setItem(this.params.key, false);
     }
 
     load() {
-        if (this.parent.params.forceEnabled) {
-            return;
-        }
-
         const state = JSON.parse(localStorage.getItem(this.params.key));
 
         if (state === null) {

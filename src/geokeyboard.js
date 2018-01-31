@@ -8,15 +8,10 @@ class Geokeyboard {
         this.params = Object.assign({
             hotSwitchKey: 96,
             change: null, // (fn) Changes other selectors and executes a callback
-            forceEnabled: false,
             globals: []
         }, params);
 
         this.listen(selectors, opts);
-
-        if (this.params.forceEnabled) {
-            this._forceEnabled();
-        }
 
         this._loadGlobalExtensions();
     }
@@ -195,10 +190,6 @@ class Geokeyboard {
                 }
             }
         }
-    }
-
-    _forceEnabled() {
-        this.selectors.forEach(s => this._enable(s));
     }
 
     static _replaceTyped(e) {
