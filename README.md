@@ -1,3 +1,5 @@
+[![npm](https://img.shields.io/npm/v/geokeyboard.svg?style=flat-square)](https://www.npmjs.com/package/geokeyboard)
+
 # geokeyboard.js
 
 geokeyboard.js is a JavaScript library that allows you to enforce Georgian keyboard layout on HTML elements.
