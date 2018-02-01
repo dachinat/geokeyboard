@@ -6,3 +6,11 @@
 .active {
   font-weight: bold;
 }
+
+nav div {
+  margin-bottom: 5px;
+}
+
+nav div:last-child {
+  margin-bottom: 20px;
+}
