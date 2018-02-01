@@ -26,6 +26,20 @@ github_username:  dachinat
 markdown: kramdown
 github:
   url: "https://github.com/dachinat/geokeyboard"
+
+navigation:
+  - title: Getting started
+    url: /
+  - title: Initializing
+    url: /initializing
+  - title: Listeners
+    url: /listeners
+  - title: Attachments
+    url: /attachments
+  - title: Callbacks
+    url: /callbacks
+  - title: Extending a library
+    url: /extending
 # Exclude from processing.
 # The following items will not be processed, by default. Create a custom list
 # to override the default setting.

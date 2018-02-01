@@ -34,12 +34,19 @@
           </ul>
         {% endif %}
 
-        <a href="{{site.baseurl}}/index.html">Getting started</a><br/>
-        <a href="{{site.baseurl}}/initializing.html">Initializing</a><br/>
-        <a href="{{site.baseurl}}/listeners.html">Listeners</a><br/>
-        <a href="{{site.baseurl}}/attachments.html">Attachments</a><br/>
-        <a href="{{site.baseurl}}/callbacks.html">Callbacks</a><br/>
-        <a href="{{site.baseurl}}/extending.html">Extending a library</a><br/>
+
+        <nav>
+          {% for item in site.navigation %}
+            {% assign class = nil %}
+            {% if page.url == item.url %}
+              {% assign class = 'active' %}
+            {% endif %}
+            <div>
+              <a href="{{site.baseurl}}{{ item.url }}" class="{{ class }}">{{ item.title }}</a>
+            </div>
+          {% endfor %}
+        </nav>
+
       </header>
       <section>
 

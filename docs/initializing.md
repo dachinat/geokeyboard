@@ -1,5 +1,6 @@
 ---
 layout: default
+permalink: initializing
 ---
 
 # Initiating a constructor
