@@ -57,3 +57,5 @@ new Geokeyboard('#input1', {
 ```
 
 <a href="https://jsfiddle.net/dachinat/e3jagkf2/" target="_blank">See an example</a>
+
+Finally, you can read about <a href="{{site.baseurl}}/extending.html">How to extend geokeyboard.js</a>
