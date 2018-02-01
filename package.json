@@ -1,6 +1,6 @@
 {
   "name": "geokeyboard",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Type using Georgian keyboard layout",
   "main": "src/index.js",
   "scripts": {
@@ -25,7 +25,7 @@
   "bugs": {
     "url": "https://github.com/dachinat/geokeyboard/issues"
   },
-  "homepage": "https://github.com/dachinat/geokeyboard#readme",
+  "homepage": "https://dachinat.github.io/geokeyboard/",
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.0",
