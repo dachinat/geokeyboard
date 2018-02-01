@@ -44,3 +44,5 @@ new Geokeyboard('#input1', {}, {
 
 Having a reference to instance variable, you can call `.listen` to add selectors, or change options for existing
 selectors anytime in your code.
+
+Next, we're going to explore <a href="{{site.baseurl}}/attachments.html">Extension attachments.</a>

@@ -12,7 +12,7 @@ Repository contains `dist/` directory, where you'll find different versions.
 
 * `geokeyboard.js` - Unminified bundled library without polyfills
 * `geokeyboard.dev.js` - Development version which you won't use in production
-* `geokeyboard.min.js` - Minified library wihtout polyfills
+* `geokeyboard.min.js` - Minified library without polyfills
 * `geokeyboard.min.pf.js` - Minified version that includes polyfills (Best for compatibility with old browsers)
 
 In this example we're including minified version with polyfills (put this code before closing body tag):
@@ -36,4 +36,4 @@ geokb = new Geokeyboard;
 
 See an <a href="https://jsfiddle.net/dachinat/xwafbrvu/" target="_blank">an example on JSFiddle.</a>
 
-Go head to <a href="/initializing.html">Initializing a constructor</a> to continue with this guide.
+Go head to <a href="{{site.baseurl}}/initializing.html">Initializing a constructor</a> to continue with this guide.

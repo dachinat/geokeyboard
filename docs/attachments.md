@@ -123,3 +123,5 @@ var geokb = new Geokeyboard('#input1', {
 
 As you can see, you're assigning a `globals` property to instance parameters, which is an array of extensions.
 Extensions themselves are arrays with two entries, *path to extension* and *property object*.
+
+Having covered all the basics of library, you can read about <a href="{{site.baseurl}}/callbacks.html">Callbacks.</a>

@@ -51,4 +51,4 @@ Default options for an instance are:
 
 <a href="https://jsfiddle.net/dachinat/uz98v7y9/" target="_blank">JSFiddle example on passing parameters.</a>
 
-Let's continue documenting with <a href="/listeners.html">Listeners overview.</a>
+Let's continue documenting with <a href="{{site.baseurl}}/listeners.html">Listeners overview.</a>
