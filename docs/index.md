@@ -32,7 +32,7 @@ Right after above examples you will have access to `Geokeyboard` object. Which y
 keyword.
 
 ```js
-geokb = new Geokeyboard;
+var geokb = new Geokeyboard;
 ```
 
 See an <a href="https://jsfiddle.net/dachinat/xwafbrvu/" target="_blank">an example on JSFiddle.</a>
