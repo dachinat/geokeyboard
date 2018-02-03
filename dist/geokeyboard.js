@@ -625,7 +625,7 @@ var Select = function () {
     }, {
         key: '_getSelectors',
         value: function _getSelectors() {
-            this.selectors = this.localSelectors ? Array.from(document.querySelectorAll(selectors)) : this.parent.selectors;
+            this.selectors = this.localSelectors ? Array.from(document.querySelectorAll(this.localSelectors)) : this.parent.selectors;
             return this.selectors;
         }
     }]);
@@ -753,7 +753,7 @@ var Checkbox = function () {
     }, {
         key: '_getSelectors',
         value: function _getSelectors() {
-            this.selectors = this.localSelectors ? Array.from(document.querySelectorAll(selectors)) : this.parent.selectors;
+            this.selectors = this.localSelectors ? Array.from(document.querySelectorAll(this.localSelectors)) : this.parent.selectors;
             return this.selectors;
         }
     }]);
