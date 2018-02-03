@@ -508,11 +508,8 @@ var Select = function () {
         this.parent = parent;
 
         // Assuming state is global if no selectors
-        if (selectors) {
-            this.selectors = Array.from(document.querySelectorAll(selectors));
-        } else {
-            this.selectors = this.parent.selectors;
-        }
+        this.localSelectors = selectors;
+        this._getSelectors();
 
         this.opts = Object.assign({
             select: null,
@@ -535,6 +532,7 @@ var Select = function () {
         value: function selectChanged(e) {
             var _this = this;
 
+            this._getSelectors();
             this.selectors.forEach(function (s) {
                 var currentValue = e.currentTarget.value;
                 if (currentValue === 'true') {
@@ -543,7 +541,6 @@ var Select = function () {
                     _this.parent._disable.call(_this.parent, s);
                 }
             });
-
             this.parent._focus(this.selectors);
         }
     }, {
@@ -606,6 +603,12 @@ var Select = function () {
                 this.select.value = 'false';
             }
         }
+    }, {
+        key: '_getSelectors',
+        value: function _getSelectors() {
+            this.selectors = this.localSelectors ? Array.from(document.querySelectorAll(selectors)) : this.parent.selectors;
+            return this.selectors;
+        }
     }]);
 
     return Select;
@@ -634,11 +637,8 @@ var Checkbox = function () {
         this.parent = parent;
 
         // Assuming state is global if no selectors
-        if (selectors) {
-            this.selectors = Array.from(document.querySelectorAll(selectors)); //selectors.split(', ');
-        } else {
-            this.selectors = this.parent.selectors;
-        }
+        this.localSelectors = selectors;
+        this._getSelectors();
 
         this.opts = Object.assign({
             checkbox: null,
@@ -661,6 +661,7 @@ var Checkbox = function () {
         value: function checkboxChanged(e) {
             var _this = this;
 
+            this._getSelectors();
             this.selectors.forEach(function (s) {
                 if (e.currentTarget.checked === true) {
                     _this.parent._enable.call(_this.parent, s);
@@ -668,7 +669,6 @@ var Checkbox = function () {
                     _this.parent._disable.call(_this.parent, s);
                 }
             });
-
             this.parent._focus(this.selectors);
         }
     }, {
@@ -730,6 +730,12 @@ var Checkbox = function () {
                 });
                 this.checkbox.checked = false;
             }
+        }
+    }, {
+        key: '_getSelectors',
+        value: function _getSelectors() {
+            this.selectors = this.localSelectors ? Array.from(document.querySelectorAll(selectors)) : this.parent.selectors;
+            return this.selectors;
         }
     }]);
 

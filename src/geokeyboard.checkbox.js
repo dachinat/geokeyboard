@@ -3,11 +3,8 @@ class Checkbox {
         this.parent = parent;
 
         // Assuming state is global if no selectors
-        if (selectors) {
-            this.selectors = Array.from(document.querySelectorAll(selectors));//selectors.split(', ');
-        } else {
-            this.selectors = this.parent.selectors;
-        }
+        this.localSelectors = selectors;
+        this._getSelectors();
 
         this.opts = Object.assign({
             checkbox: null,
@@ -26,6 +23,7 @@ class Checkbox {
     }
 
     checkboxChanged(e) {
+        this._getSelectors();
         this.selectors.forEach(s => {
             if (e.currentTarget.checked === true) {
                 this.parent._enable.call(this.parent, s);
@@ -33,7 +31,6 @@ class Checkbox {
                 this.parent._disable.call(this.parent, s);
             }
         });
-
         this.parent._focus(this.selectors);
     }
 
@@ -81,6 +78,11 @@ class Checkbox {
             this.selectors.forEach(s => this.parent._disable.call(this.parent, s, true));
             this.checkbox.checked = false;
         }
+    }
+
+    _getSelectors() {
+        this.selectors = this.localSelectors ? Array.from(document.querySelectorAll(selectors)) : this.parent.selectors;
+        return this.selectors;
     }
 }
 

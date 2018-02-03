@@ -3,11 +3,8 @@ class Select {
         this.parent = parent;
 
         // Assuming state is global if no selectors
-        if (selectors) {
-            this.selectors = Array.from(document.querySelectorAll(selectors));
-        } else {
-            this.selectors = this.parent.selectors;
-        }
+        this.localSelectors = selectors;
+        this._getSelectors();
 
         this.opts = Object.assign({
             select: null,
@@ -26,6 +23,7 @@ class Select {
     }
 
     selectChanged(e) {
+        this._getSelectors();
         this.selectors.forEach(s => {
             const currentValue = e.currentTarget.value;
             if (currentValue === 'true') {
@@ -34,7 +32,6 @@ class Select {
                 this.parent._disable.call(this.parent, s);
             }
         });
-
         this.parent._focus(this.selectors);
     }
 
@@ -82,6 +79,11 @@ class Select {
             this.selectors.forEach(s => this.parent._disable.call(this.parent, s, true));
             this.select.value = 'false';
         }
+    }
+
+    _getSelectors() {
+        this.selectors = this.localSelectors ? Array.from(document.querySelectorAll(selectors)) : this.parent.selectors;
+        return this.selectors;
     }
 }
 
