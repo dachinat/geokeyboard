@@ -40,6 +40,9 @@ navigation:
     url: /callbacks
   - title: Extending a library
     url: /extending
+  - title: Other examples
+    url: /examples
+
 # Exclude from processing.
 # The following items will not be processed, by default. Create a custom list
 # to override the default setting.
