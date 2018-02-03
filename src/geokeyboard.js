@@ -38,6 +38,7 @@ class Geokeyboard {
                     replaceOnPaste: false,
                     hotSwitch: true,
                     change: null, // on change callback
+                    type: null, // on type callback
                     checkFocus: true,
                     listeners: [],
                 };
@@ -59,6 +60,13 @@ class Geokeyboard {
             this.toggleListener(selector, 'checkFocus', 'focus', e => {
                 this.constructor._checkFocus.call(this, e);
             }, true);
+
+            const typeCallback = selector[this.constructor.opts].type;
+            if (typeof typeCallback === 'function') {
+                this.toggleListener(selector, 'type', 'keyup', e => {
+                    typeCallback(e.currentTarget, this.constructor._getValue.call(this, e.currentTarget));
+                });
+            }
         });
 
         this.selectors = Array.from(new Set(this.selectors.concat(selectors)));
@@ -261,6 +269,16 @@ class Geokeyboard {
             let instance = Reflect.construct(ext[0], [this, null, ext[1]]);
             this.extensions.add(instance);
         });
+    }
+
+    static _getValue(selector) {
+        selector = selector.frameElement || selector;
+        if (selector.tagName === 'INPUT' || selector.tagName === 'TEXTAREA') {
+            return selector.value;
+        } else if (selector.tagName === 'DIV' || selector.tagName === 'IFRAME') {
+            selector = this.constructor.getContext(selector);
+            return selector.document ? selector.document.body.innerHTML : selector.innerHTML;
+        }
     }
 
     static _warnBadSelector(selectors) {
