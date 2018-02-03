@@ -149,6 +149,7 @@ var Geokeyboard = function () {
                         replaceOnPaste: false,
                         hotSwitch: true,
                         change: null, // on change callback
+                        type: null, // on type callback
                         checkFocus: true,
                         listeners: []
                     };
@@ -170,6 +171,13 @@ var Geokeyboard = function () {
                 _this.toggleListener(selector, 'checkFocus', 'focus', function (e) {
                     _this.constructor._checkFocus.call(_this, e);
                 }, true);
+
+                var typeCallback = selector[_this.constructor.opts].type;
+                if (typeof typeCallback === 'function') {
+                    _this.toggleListener(selector, 'type', 'keyup', function (e) {
+                        typeCallback(e.currentTarget, _this.constructor._getValue.call(_this, e.currentTarget));
+                    });
+                }
             });
 
             this.selectors = Array.from(new Set(this.selectors.concat(selectors)));
@@ -451,6 +459,17 @@ var Geokeyboard = function () {
                 } else {
                     this._enable(selector);
                 }
+            }
+        }
+    }, {
+        key: '_getValue',
+        value: function _getValue(selector) {
+            selector = selector.frameElement || selector;
+            if (selector.tagName === 'INPUT' || selector.tagName === 'TEXTAREA') {
+                return selector.value;
+            } else if (selector.tagName === 'DIV' || selector.tagName === 'IFRAME') {
+                selector = this.constructor.getContext(selector);
+                return selector.document ? selector.document.body.innerHTML : selector.innerHTML;
             }
         }
     }, {
